@@ -1,0 +1,52 @@
+{
+    "entries": [
+        {
+            "key": "login",
+            "value": "Login"
+        },
+        {
+            "key": "id",
+            "value": "ID"
+        },
+        {
+            "key": "password",
+            "value": "Password"
+        },
+        {
+            "key": "channel_0",
+            "value": "Channel 0"
+        },
+        {
+            "key": "create_room",
+            "value": "Create Room"
+        },
+        {
+            "key": "back",
+            "value": "Back"
+        },
+        {
+            "key": "ok",
+            "value": "OK"
+        },
+        {
+            "key": "cancel",
+            "value": "Cancel"
+        },
+        {
+            "key": "logging_in",
+            "value": "Logging in..."
+        },
+        {
+            "key": "channel_1",
+            "value": "Channel 1"
+        },
+        {
+            "key": "channel_2",
+            "value": "Channel 2"
+        },
+        {
+            "key": "refresh_room_list",
+            "value": "Refresh Room List"
+        }
+    ]
+}

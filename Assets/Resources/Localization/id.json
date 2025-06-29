@@ -1,0 +1,52 @@
+{
+    "entries": [
+        {
+            "key": "login",
+            "value": "Masuk"
+        },
+        {
+            "key": "id",
+            "value": "ID"
+        },
+        {
+            "key": "password",
+            "value": "Kata Sandi"
+        },
+        {
+            "key": "channel_0",
+            "value": "Saluran 0"
+        },
+        {
+            "key": "create_room",
+            "value": "Buat Ruangan"
+        },
+        {
+            "key": "back",
+            "value": "Kembali"
+        },
+        {
+            "key": "ok",
+            "value": "OK"
+        },
+        {
+            "key": "cancel",
+            "value": "Batal"
+        },
+        {
+            "key": "logging_in",
+            "value": "Sedang masuk..."
+        },
+        {
+            "key": "channel_1",
+            "value": "Saluran 1"
+        },
+        {
+            "key": "channel_2",
+            "value": "Saluran 2"
+        },
+        {
+            "key": "refresh_room_list",
+            "value": "Perbarui Daftar Ruangan"
+        }
+    ]
+}
