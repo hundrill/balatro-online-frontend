@@ -29,7 +29,7 @@ namespace BalatroOnline.Lobby
 
         public void SetRoomData(RoomData room, System.Action<string> joinCallback)
         {
-            roomId = room.id;
+            roomId = room.roomId;
             onJoinCallback = joinCallback;
 
             if (roomNameText != null)
@@ -39,18 +39,18 @@ namespace BalatroOnline.Lobby
 
             if (playerCountText != null)
             {
-                playerCountText.text = $"{room.currentPlayers}/{room.maxPlayers}";
+                playerCountText.text = $"{room.players}/{room.maxPlayers}";
             }
 
             if (roomIdText != null)
             {
-                roomIdText.text = $"ID: {room.id.Substring(0, 8)}...";
+                roomIdText.text = $"ID: {room.roomId.Substring(0, 8)}...";
             }
 
             // 방이 가득 찼는지 확인
             if (joinButton != null)
             {
-                bool isFull = room.currentPlayers >= room.maxPlayers;
+                bool isFull = room.players >= room.maxPlayers;
                 joinButton.interactable = !isFull;
                 
                 if (isFull)

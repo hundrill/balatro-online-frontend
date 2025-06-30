@@ -19,7 +19,7 @@ namespace BalatroOnline.Lobby
         [Header("Room List UI")]
         public ScrollRect roomListScrollRect;
         public Transform roomListContent;
-        public GameObject roomItemPrefab;
+        public GameObject roomListItemPrefab;
         public Button refreshButton;
         public Button createRoomButton;
         public Button backButton;
@@ -74,7 +74,7 @@ namespace BalatroOnline.Lobby
             if (res.success)
             {
                 Debug.Log($"[LobbyUIManager] 방 생성 성공! RoomId: {res.roomId}");
-                GameManager.Instance.CurrentRoomId = res.roomId;
+                BalatroOnline.Common.SessionManager.Instance.CurrentRoomId = res.roomId;
                 
                 // 방 생성 성공 메시지 표시
                 MessageDialogManager.Instance.Show($"방이 생성되었습니다!\n방 이름: {res.room.name}\n방 ID: {res.roomId}", () => {
@@ -207,13 +207,13 @@ namespace BalatroOnline.Lobby
 
         private void CreateRoomItem(RoomData room)
         {
-            if (roomItemPrefab == null || roomListContent == null)
+            if (roomListItemPrefab == null || roomListContent == null)
             {
-                Debug.LogError("[LobbyUIManager] roomItemPrefab 또는 roomListContent가 설정되지 않았습니다.");
+                Debug.LogError("[LobbyUIManager] roomListItemPrefab 또는 roomListContent가 설정되지 않았습니다.");
                 return;
             }
 
-            GameObject roomItem = Instantiate(roomItemPrefab, roomListContent);
+            GameObject roomItem = Instantiate(roomListItemPrefab, roomListContent);
             roomItems.Add(roomItem);
 
             // 방 아이템 컴포넌트 설정
@@ -239,7 +239,7 @@ namespace BalatroOnline.Lobby
         private void OnJoinRoomClicked(string roomId)
         {
             Debug.Log($"[LobbyUIManager] 방 입장 시도: {roomId}");
-            GameManager.Instance.CurrentRoomId = roomId;
+            BalatroOnline.Common.SessionManager.Instance.CurrentRoomId = roomId;
             
             // Socket.IO를 통해 방 입장
             JoinRoomViaSocket(roomId);

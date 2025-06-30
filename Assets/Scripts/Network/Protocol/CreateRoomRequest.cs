@@ -6,4 +6,4 @@ namespace BalatroOnline.Network.Protocol
         public string name;
         public int maxPlayers;
     }
-} 
+}

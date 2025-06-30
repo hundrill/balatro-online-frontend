@@ -66,7 +66,7 @@ namespace BalatroOnline.InGame
             }
 
             // 현재 방 정보 표시
-            currentRoomId = GameManager.Instance.CurrentRoomId;
+            currentRoomId = BalatroOnline.Common.SessionManager.Instance.CurrentRoomId;
             if (roomInfoText != null)
             {
                 roomInfoText.text = $"방 ID: {currentRoomId}";

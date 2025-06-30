@@ -4,6 +4,7 @@ using TMPro;
 using BalatroOnline.Network;
 using BalatroOnline.Network.Protocol;
 using BalatroOnline.Common;
+using System.Collections.Generic;
 
 namespace BalatroOnline.InGame
 {
@@ -61,23 +62,34 @@ namespace BalatroOnline.InGame
         public void OnClickBack()
         {
             // 방 ID는 GameManager 등에서 관리한다고 가정
-            string roomId = GameManager.Instance.CurrentRoomId;
+            string roomId = BalatroOnline.Common.SessionManager.Instance != null ? BalatroOnline.Common.SessionManager.Instance.CurrentRoomId : null;
             MessageDialogManager.Instance.Show("방을 나가는 중입니다...");
-            ApiManager.Instance.LeaveRoom(roomId, OnLeaveRoomResult);
+            SocketManager.Instance.LeaveRoom(roomId);
+            UnityEngine.SceneManagement.SceneManager.LoadScene("LobbyScene");
         }
 
-        private void OnLeaveRoomResult(BaseResponse res)
+        // 테스트용 딜 버튼 핸들러
+        public void OnClickTestDeal()
         {
-            if (res.success)
+            Debug.Log("[InGameUIManager] test 버튼 클릭됨: ready 메시지 전송 시도");
+            if (SocketManager.Instance != null)
             {
-                MessageDialogManager.Instance.Show("방에서 퇴장하였습니다.", () => {
-                    UnityEngine.SceneManagement.SceneManager.LoadScene("LobbyScene");
-                });
+                var roomId = BalatroOnline.Common.SessionManager.Instance.CurrentRoomId;
+                Debug.Log($"[InGameUIManager] roomId: {roomId}");
+                Debug.Log($"[InGameUIManager] SocketManager 연결됨? {SocketManager.Instance.IsConnected()}");
+                var data = new Dictionary<string, object> { { "roomId", roomId } };
+                SocketManager.Instance.EmitToServer("ready", data);
             }
-            else
-            {
-                MessageDialogManager.Instance.Show("방 퇴장 실패: " + res.message);
-            }
+        }
+
+        // 서비스 준비 중 메시지창
+        public void OnClickRunInfo()
+        {
+            MessageDialogManager.Instance.Show("서비스 준비 중입니다");
+        }
+        public void OnClickOption()
+        {
+            MessageDialogManager.Instance.Show("서비스 준비 중입니다");
         }
     }
 } 

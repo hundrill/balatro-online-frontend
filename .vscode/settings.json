@@ -66,5 +66,9 @@
     "explorer.fileNesting.patterns": {
         "*.sln": "*.csproj",
     },
-    "dotnet.defaultSolution": "BalatroOnlineFrontend.sln"
+    "dotnet.defaultSolution": "BalatroOnlineFrontend.sln",
+    "editor.formatOnSave": true,
+    "[csharp]": {
+        "editor.formatOnSave": true
+    }
 }

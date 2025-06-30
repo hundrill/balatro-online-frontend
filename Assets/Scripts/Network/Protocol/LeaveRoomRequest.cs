@@ -4,5 +4,6 @@ namespace BalatroOnline.Network.Protocol
     public class LeaveRoomRequest
     {
         public string roomId;
+        public string userId;
     }
 } 

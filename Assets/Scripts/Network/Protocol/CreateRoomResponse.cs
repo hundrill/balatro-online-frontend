@@ -16,6 +16,5 @@ namespace BalatroOnline.Network.Protocol
         public int players;
         public string status;
         public long createdAt;
-        public string ownerId;
     }
-} 
+}

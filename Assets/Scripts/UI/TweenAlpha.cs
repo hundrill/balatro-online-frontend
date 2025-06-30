@@ -37,7 +37,8 @@ namespace BalatroOnline.Common
             while (elapsed < duration)
             {
                 elapsed += Time.deltaTime;
-                canvasGroup.alpha = Mathf.Lerp(from, to, elapsed / duration);
+                float t = Mathf.Clamp01(elapsed / duration);
+                canvasGroup.alpha = Mathf.Lerp(from, to, t);
                 yield return null;
             }
             canvasGroup.alpha = to;

@@ -34,7 +34,12 @@ namespace BalatroOnline.Network
         public void LeaveRoom(string roomId, System.Action<BaseResponse> onResult)
         {
             Debug.Log($"[ApiManager] 방 퇴장 요청 시작: roomId={roomId}");
-            StartCoroutine(LeaveRoomCoroutine(roomId, onResult));
+            string userId = null;
+            if (SocketManager.Instance != null && SocketManager.Instance.GetSocket() != null && SocketManager.Instance.GetSocket().Socket != null)
+            {
+                userId = SocketManager.Instance.GetSocket().Socket.Id;
+            }
+            StartCoroutine(LeaveRoomCoroutine(roomId, userId, onResult));
         }
 
         public void GetRoomList(System.Action<RoomListResponse> onResult)
@@ -99,10 +104,10 @@ namespace BalatroOnline.Network
             onResult?.Invoke(res);
         }
 
-        private IEnumerator LeaveRoomCoroutine(string roomId, System.Action<BaseResponse> onResult)
+        private IEnumerator LeaveRoomCoroutine(string roomId, string userId, System.Action<BaseResponse> onResult)
         {
             string url = "http://localhost:3000/rooms/leave";
-            var req = new LeaveRoomRequest { roomId = roomId };
+            var req = new BalatroOnline.Network.Protocol.LeaveRoomRequest { roomId = roomId, userId = userId };
             string json = JsonUtility.ToJson(req);
             Debug.Log($"[ApiManager] 요청 URL: {url}");
             Debug.Log($"[ApiManager] 요청 바디: {json}");
