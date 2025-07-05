@@ -6,7 +6,7 @@ namespace BalatroOnline.Localization
     public static class LocalizationManager
     {
         static Dictionary<string, string> table;
-        static string currentLang = "id";
+        static string currentLang = "ko";
 
         public static void Load(string lang)
         {
@@ -38,4 +38,4 @@ namespace BalatroOnline.Localization
         [System.Serializable]
         public class Entry { public string key, value; }
     }
-} 
+}

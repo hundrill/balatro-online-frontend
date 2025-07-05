@@ -12,7 +12,7 @@ namespace BalatroOnline.Common
         public static GameManager Instance { get; private set; }
 
         public CardDealer cardDealer; // 카드 딜러 참조
-        public MyPlayer myPlayer; // 내 플레이어 참조
+        public MySlot myPlayer; // 내 플레이어 참조
         public List<OpponentSlot> opponentSlots; // 상대방 슬롯들 (Inspector에서 할당)
 
         private void Awake()
@@ -33,18 +33,14 @@ namespace BalatroOnline.Common
 
         // TODO: 전체 게임 상태, 데이터 관리 등
 
-        // 카드 딜링 메서드
-        public void DealCards()
-        {
-            if (cardDealer != null)
-                cardDealer.StartDeal();
-        }
 
         // 서버에서 카드 분배 메시지 수신 시 호출
         public void OnReceiveCardDeal(List<CardData> myCards, List<int> opponentCardCounts)
         {
             if (myPlayer != null)
                 myPlayer.ReceiveInitialCards(myCards);
+
+            /*
             for (int i = 0; i < opponentSlots.Count; i++)
             {
                 if (i < opponentCardCounts.Count)
@@ -52,6 +48,7 @@ namespace BalatroOnline.Common
                 else
                     opponentSlots[i].SetCardCount(0);
             }
+            */
         }
     }
-} 
+}

@@ -47,6 +47,50 @@
         {
             "key": "refresh_room_list",
             "value": "Refresh Room List"
+        },
+        {
+            "key": "run_info",
+            "value": "Run Info"
+        },
+        {
+            "key": "option",
+            "value": "Option"
+        },
+        {
+            "key": "hand_play_ready",
+            "value": "Ready for Hand Play"
+        },
+        {
+            "key": "discard",
+            "value": "Discard"
+        },
+        {
+            "key": "rank",
+            "value": "Rank"
+        },
+        {
+            "key": "suit",
+            "value": "Suit"
+        },
+        {
+            "key": "hand_sort",
+            "value": "Hand Sort"
+        },
+        {
+            "key": "next_round",
+            "value": "Next Round"
+        },
+        {
+            "key": "re_roll",
+            "value": "Re-Roll"
+        },
+        {
+            "key": "buy",
+            "value": "Buy"
+        },
+        {
+            "key": "join",
+            "value": "Join"
         }
     ]
 }

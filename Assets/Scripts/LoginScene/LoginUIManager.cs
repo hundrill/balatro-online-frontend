@@ -42,9 +42,11 @@ namespace BalatroOnline.Login
             {
                 Debug.Log($"Login success! Welcome, {res.user?.nickname}");
 
+                BalatroOnline.Common.SessionManager.Instance.UserId = res.user?.email;
+
                 // 로그인 성공 후 Socket.IO 연결
                 SocketManager.Instance.Connect();
-                
+
                 // TODO: 성공 시 씬 전환 등 처리
                 UnityEngine.SceneManagement.SceneManager.LoadScene("ChannelScene");
             }
@@ -56,4 +58,4 @@ namespace BalatroOnline.Login
             }
         }
     }
-} 
+}

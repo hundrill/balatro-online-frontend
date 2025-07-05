@@ -47,6 +47,50 @@
         {
             "key": "refresh_room_list",
             "value": "방 목록 새로고침"
+        },
+        {
+            "key": "run_info",
+            "value": "진행 정보"
+        },
+        {
+            "key": "option",
+            "value": "옵션"
+        },
+        {
+            "key": "hand_play_ready",
+            "value": "핸드 준비 완료"
+        },
+        {
+            "key": "discard",
+            "value": "버리기"
+        },
+        {
+            "key": "rank",
+            "value": "랭크"
+        },
+        {
+            "key": "suit",
+            "value": "무늬"
+        },
+        {
+            "key": "hand_sort",
+            "value": "정렬"
+        },
+        {
+            "key": "next_round",
+            "value": "다음 라운드"
+        },
+        {
+            "key": "re_roll",
+            "value": "다시 뽑기"
+        },
+        {
+            "key": "buy",
+            "value": "구매"
+        },
+        {
+            "key": "join",
+            "value": "참가"
         }
     ]
 }

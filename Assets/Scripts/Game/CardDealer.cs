@@ -11,48 +11,22 @@ namespace BalatroOnline.Game
         public Transform[] handPositions; // 8개 핸드 위치
         public Sprite[] cardSprites;  // 실제 카드 스프라이트(52장)
         public Sprite backSprite; // 카드 뒷면 스프라이트
+        public Transform mySlotTransform; // 카드의 부모로 사용할 MySlot Transform
 
         private List<Card> dealtCards = new List<Card>();
 
-        public void StartDeal()
+        // MySlot에서 호출: 카드 한 장을 지정 위치로 딜링
+        public Card DealCard(Sprite cardSprite, Transform targetPos, CardData cardData = null)
         {
-            Debug.Log("[CardDealer] StartDeal 호출됨");
-            StartCoroutine(DealRoutine());
-        }
-
-        private IEnumerator DealRoutine()
-        {
-            dealtCards.Clear();
-            for (int i = 0; i < 8; i++)
-            {
-                Card card = Instantiate(cardPrefab, deckPos.position, Quaternion.identity, transform);
-                card.SetBack(backSprite); // 뒷면으로 세팅
-                StartCoroutine(MoveCard(card, handPositions[i].position, 0.3f, cardSprites != null && cardSprites.Length > 0 ? cardSprites[i % cardSprites.Length] : null));
-                yield return new WaitForSeconds(0.1f);
-            }
-        }
-
-        private IEnumerator MoveCard(Card card, Vector3 target, float duration, Sprite frontSprite)
-        {
-            Transform cardTransform = card.transform;
-            Vector3 start = cardTransform.position;
-            float t = 0;
-            while (t < 1)
-            {
-                t += Time.deltaTime / duration;
-                cardTransform.position = Vector3.Lerp(start, target, t);
-                yield return null;
-            }
-            cardTransform.position = target;
-            card.SetCard(frontSprite); // 도착하면 바로 오픈
-        }
-
-        // MyPlayer에서 호출: 카드 한 장을 지정 위치로 딜링
-        public Card DealCard(Sprite cardSprite, Transform targetPos)
-        {
-            Card card = Instantiate(cardPrefab, deckPos.position, Quaternion.identity, transform);
+            Card card = Instantiate(cardPrefab, deckPos.position, Quaternion.identity, mySlotTransform);
             card.SetBack(backSprite);
-            StartCoroutine(MoveCard(card, targetPos.position, 0.3f, cardSprite));
+            // CardDataHolder 부착 및 데이터 세팅
+            var holder = card.GetComponent<CardDataHolder>();
+            if (holder == null)
+                holder = card.gameObject.AddComponent<CardDataHolder>();
+            if (cardData != null)
+                holder.SetData(cardData);
+            // 카드 이동/애니메이션은 MySlot 등 핸드 관리자가 직접 수행
             return card;
         }
 

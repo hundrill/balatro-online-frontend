@@ -57,14 +57,14 @@ namespace BalatroOnline.Lobby
         public void OnClickCreateRoom()
         {
             Debug.Log("[LobbyUIManager] 방 만들기 버튼 클릭됨");
-            
+
             // 테스트용 기본값으로 방 생성 (특수문자 제거)
             string roomName = "테스트 방 " + System.DateTime.Now.ToString("HHmmss");
             int maxPlayers = 4;
-            
+
             // 로딩 메시지 표시
             MessageDialogManager.Instance.Show("방을 생성하고 있습니다...");
-            
+
             // API 호출
             ApiManager.Instance.CreateRoom(roomName, maxPlayers, OnCreateRoomResult);
         }
@@ -75,12 +75,15 @@ namespace BalatroOnline.Lobby
             {
                 Debug.Log($"[LobbyUIManager] 방 생성 성공! RoomId: {res.roomId}");
                 BalatroOnline.Common.SessionManager.Instance.CurrentRoomId = res.roomId;
-                
+
                 // 방 생성 성공 메시지 표시
+                /*
                 MessageDialogManager.Instance.Show($"방이 생성되었습니다!\n방 이름: {res.room.name}\n방 ID: {res.roomId}", () => {
                     // OK 클릭 시 Socket.IO로 방 입장
                     JoinRoomViaSocket(res.roomId);
                 });
+                */
+                JoinRoomViaSocket(res.roomId);
             }
             else
             {
@@ -88,76 +91,62 @@ namespace BalatroOnline.Lobby
                 MessageDialogManager.Instance.Show($"방 생성 실패: {res.message}");
             }
         }
-        
+
         private void JoinRoomViaSocket(string roomId)
         {
             Debug.Log($"[LobbyUIManager] Socket.IO를 통해 방 입장 시도: {roomId}");
             MessageDialogManager.Instance.Show("방에 입장하고 있습니다...");
-            
-            // 방 입장 성공 이벤트 구독
-            SocketManager.Instance.OnUserJoined += OnRoomJoinSuccess;
-            
-            // 이미 Socket.IO가 연결되어 있는지 확인
-            if (SocketManager.Instance.IsConnected())
-            {
-                Debug.Log("[LobbyUIManager] Socket.IO가 이미 연결되어 있습니다. 방에 입장합니다.");
-                SocketManager.Instance.JoinRoom(roomId);
-            }
-            else
-            {
-                Debug.Log("[LobbyUIManager] Socket.IO 연결이 필요합니다. 연결을 시도합니다.");
-                // Socket.IO 연결
-                SocketManager.Instance.Connect();
-                
-                // 연결 완료 후 방 입장
-                SocketManager.Instance.OnConnected += () => {
-                    Debug.Log("[LobbyUIManager] Socket.IO 연결 완료. 방에 입장합니다.");
-                    SocketManager.Instance.JoinRoom(roomId);
-                };
-                
-                // 연결 실패 시 처리 (타임아웃 방식)
-                StartCoroutine(CheckConnectionTimeout());
-            }
-        }
-        
-        private System.Collections.IEnumerator CheckConnectionTimeout()
-        {
-            float timeout = 10f; // 10초 타임아웃
-            float elapsed = 0f;
-            
-            while (elapsed < timeout)
-            {
-                if (SocketManager.Instance.IsConnected())
-                {
-                    yield break; // 연결 성공
-                }
-                
-                elapsed += Time.deltaTime;
-                yield return null;
-            }
-            
-            // 타임아웃 발생
-            Debug.LogError("[LobbyUIManager] Socket.IO 연결 타임아웃");
-            SocketManager.Instance.OnUserJoined -= OnRoomJoinSuccess; // 이벤트 구독 해제
-            MessageDialogManager.Instance.Show("Socket.IO 연결 시간 초과\n방은 생성되었지만 실시간 통신이 불가능합니다.", () => {
-                // 연결 실패해도 InGameScene으로 이동 (REST API만 사용)
-                UnityEngine.SceneManagement.SceneManager.LoadScene("InGameScene");
-            });
-        }
-        
-        private void OnRoomJoinSuccess(string userId)
-        {
-            Debug.Log($"[LobbyUIManager] 방 입장 성공! 사용자: {userId}");
-            
-            // 이벤트 구독 해제
-            SocketManager.Instance.OnUserJoined -= OnRoomJoinSuccess;
-            
-            MessageDialogManager.Instance.Show("방 입장 성공! 게임을 시작합니다.", () => {
-                // 방 입장 성공 후 InGameScene으로 이동
-                UnityEngine.SceneManagement.SceneManager.LoadScene("InGameScene");
-            });
+
+            SocketManager.Instance.JoinRoom(roomId);
+
+            // // SocketManager에서 직접 핸들러를 호출하므로 이벤트 구독 불필요
+
+            // // 이미 Socket.IO가 연결되어 있는지 확인
+            // if (SocketManager.Instance.IsConnected())
+            // {
+            //     Debug.Log("[LobbyUIManager] Socket.IO가 이미 연결되어 있습니다. 방에 입장합니다.");
+            //     SocketManager.Instance.JoinRoom(roomId);
+            // }
+            // else
+            // {
+            //     Debug.Log("[LobbyUIManager] Socket.IO 연결이 필요합니다. 연결을 시도합니다.");
+            //     // Socket.IO 연결
+            //     SocketManager.Instance.Connect();
+
+            //     // 연결 완료 후 방 입장: SocketManager에서 직접 핸들러 호출
+
+            //     // 연결 실패 시 처리 (타임아웃 방식)
+            //     StartCoroutine(CheckConnectionTimeout());
+            // }
         }
 
+        /*
+                private System.Collections.IEnumerator CheckConnectionTimeout()
+                {
+                    float timeout = 10f; // 10초 타임아웃
+                    float elapsed = 0f;
+
+                    while (elapsed < timeout)
+                    {
+                        if (SocketManager.Instance.IsConnected())
+                        {
+                            yield break; // 연결 성공
+                        }
+
+                        elapsed += Time.deltaTime;
+                        yield return null;
+                    }
+
+                    // 타임아웃 발생
+                    Debug.LogError("[LobbyUIManager] Socket.IO 연결 타임아웃");
+                    // SocketManager에서 직접 핸들러를 호출하므로 이벤트 구독 해제 불필요
+                    MessageDialogManager.Instance.Show("Socket.IO 연결 시간 초과\n방은 생성되었지만 실시간 통신이 불가능합니다.", () =>
+                    {
+                        // 연결 실패해도 InGameScene으로 이동 (REST API만 사용)
+                        UnityEngine.SceneManagement.SceneManager.LoadScene("InGameScene");
+                    });
+                }
+        */
         public void OnClickRefreshRoomList()
         {
             Debug.Log("[LobbyUIManager] 방 목록 새로고침 버튼 클릭됨");
@@ -240,9 +229,18 @@ namespace BalatroOnline.Lobby
         {
             Debug.Log($"[LobbyUIManager] 방 입장 시도: {roomId}");
             BalatroOnline.Common.SessionManager.Instance.CurrentRoomId = roomId;
-            
+
             // Socket.IO를 통해 방 입장
             JoinRoomViaSocket(roomId);
         }
+
+        public void OnRoomJoinSuccess(string userId)
+        {
+            Debug.Log($"[LobbyUIManager] 방 입장 성공! 사용자: {userId}");
+
+            // SocketManager에서 직접 핸들러를 호출하므로 이벤트 구독 해제 불필요
+
+            UnityEngine.SceneManagement.SceneManager.LoadScene("InGameScene");
+        }
     }
-} 
+}
