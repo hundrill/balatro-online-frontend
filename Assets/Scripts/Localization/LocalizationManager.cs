@@ -7,6 +7,22 @@ namespace BalatroOnline.Localization
     {
         static Dictionary<string, string> table;
         static string currentLang = "ko";
+        private static List<LocalizedText> observers = new List<LocalizedText>();
+
+        public static void Register(LocalizedText lt)
+        {
+            if (!observers.Contains(lt))
+                observers.Add(lt);
+        }
+        public static void Unregister(LocalizedText lt)
+        {
+            observers.Remove(lt);
+        }
+        public static void NotifyAll()
+        {
+            foreach (var lt in observers)
+                if (lt != null) lt.Refresh();
+        }
 
         public static void Load(string lang)
         {
@@ -16,6 +32,7 @@ namespace BalatroOnline.Localization
                 table = JsonUtility.FromJson<LocalizationTable>(json.text).ToDict();
             else
                 table = new Dictionary<string, string>();
+            NotifyAll(); // 언어 변경 시 자동 갱신
         }
 
         public static string GetText(string key)

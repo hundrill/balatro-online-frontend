@@ -91,6 +91,14 @@
         {
             "key": "join",
             "value": "Join"
+        },
+        {
+            "key": "hand_play_ready_complete",
+            "value": "Hand Ready!"
+        },
+        {
+            "key": "next_round_ready_complete",
+            "value": "Next Round Complete!"
         }
     ]
 }

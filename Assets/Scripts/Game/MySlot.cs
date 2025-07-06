@@ -15,6 +15,8 @@ namespace BalatroOnline.Game
         [SerializeField] private TextMeshProUGUI rankText;
         [SerializeField] private TextMeshProUGUI scoreText;
         public TextMeshProUGUI nicknameText; // 인스펙터에서 연결
+        public GameObject handPlayReadyIndicator; // 인스펙터에서 연결
+        public GameObject nextRoundReadyIndicator; // 인스펙터에서 연결
 
         public enum SortType { Rank, Suit }
         public SortType userSortType = SortType.Rank; // TODO: UserSettings에서 불러오도록
@@ -363,8 +365,8 @@ namespace BalatroOnline.Game
             int startIdx = 0;
             if (n == 1) startIdx = 2; // 가운데
             else if (n == 2) startIdx = 1; // 1,2번 슬롯
-            else if (n == 3) startIdx = 0; // 0,1,2번 슬롯
-            else if (n == 4) startIdx = 0; // 0~3번 슬롯
+            else if (n == 3) startIdx = 1; // 0,1,2번 슬롯
+            else if (n == 4) startIdx = 1; // 0~3번 슬롯
             else if (n == 5) startIdx = 0; // 0~4번 슬롯
             // 3. 카드 이동
             for (int i = 0; i < moveCards.Count; i++)
@@ -404,6 +406,12 @@ namespace BalatroOnline.Game
         public string GetUserId()
         {
             return currentUserId;
+        }
+
+        public void SetReady(bool isReady)
+        {
+            if (handPlayReadyIndicator != null)
+                handPlayReadyIndicator.SetActive(isReady);
         }
     }
 }

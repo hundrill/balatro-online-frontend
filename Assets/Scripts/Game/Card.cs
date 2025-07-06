@@ -209,5 +209,29 @@ namespace BalatroOnline.Game
             cg.alpha = 0f;
             Destroy(gameObject);
         }
+
+        // 내 카드로 셋팅
+        public void SetupAsMyCard(CardData data, Sprite front, Sprite back)
+        {
+            SetCard(front);
+            SetInteractable(true);
+            // CardDataHolder 부착 및 데이터 세팅
+            var holder = GetComponent<CardDataHolder>();
+            if (holder == null)
+                holder = gameObject.AddComponent<CardDataHolder>();
+            if (data != null)
+                holder.SetData(data);
+        }
+
+        // 상대방 카드로 셋팅
+        public void SetupAsOpponentCard(Sprite back)
+        {
+            SetBack(back);
+            SetInteractable(false);
+            // CardDataHolder 제거(있으면)
+            var holder = GetComponent<CardDataHolder>();
+            if (holder != null)
+                Destroy(holder);
+        }
     }
 }

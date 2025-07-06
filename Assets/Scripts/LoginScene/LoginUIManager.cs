@@ -36,6 +36,33 @@ namespace BalatroOnline.Login
             ApiManager.Instance.Login(idInput.text, passwordInput.text, OnLoginResult);
         }
 
+        public void OnClickEnglish()
+        {
+            BalatroOnline.Localization.LocalizationManager.Load("en");
+            RefreshLocalizedTexts();
+        }
+
+        public void OnClickKorean()
+        {
+            BalatroOnline.Localization.LocalizationManager.Load("ko");
+            RefreshLocalizedTexts();
+        }
+
+        public void OnClickIndonesia()
+        {
+            BalatroOnline.Localization.LocalizationManager.Load("id");
+            RefreshLocalizedTexts();
+        }
+
+        private void RefreshLocalizedTexts()
+        {
+            var all = FindObjectsByType<LocalizedText>(UnityEngine.FindObjectsSortMode.None);
+            foreach (var lt in all)
+            {
+                lt.Refresh(); // Start() 대신 Refresh() 호출
+            }
+        }
+
         private void OnLoginResult(Network.Protocol.LoginResponse res)
         {
             if (res.success)

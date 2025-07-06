@@ -3,6 +3,7 @@ using TMPro;
 using UnityEngine.UI;
 using System;
 using BalatroOnline.Localization;
+using System.Collections;
 
 namespace BalatroOnline.Common
 {
@@ -14,6 +15,10 @@ namespace BalatroOnline.Common
         private TextMeshProUGUI messageText;
         private Button okButton;
         private Action onOkCallback;
+        private TextMeshProUGUI timeoutText;
+        private float timeoutRemaining;
+        private bool isTimeoutMode;
+        private CanvasGroup canvasGroup;
 
         private void Awake()
         {
@@ -28,7 +33,7 @@ namespace BalatroOnline.Common
             }
         }
 
-        public void Show(string message, Action onOk = null)
+        public void Show(string message, Action onOk = null, float timeoutSeconds = 0)
         {
             if (dialogInstance == null)
             {
@@ -41,35 +46,150 @@ namespace BalatroOnline.Common
                 dialogInstance.SetActive(true);
             }
 
+            // CanvasGroup 연결 또는 추가
+            if (canvasGroup == null)
+            {
+                canvasGroup = dialogInstance.GetComponent<CanvasGroup>();
+                if (canvasGroup == null)
+                    canvasGroup = dialogInstance.AddComponent<CanvasGroup>();
+            }
+            // 즉시 표시 (페이드인 없이 바로)
+            canvasGroup.alpha = 1f;
+            canvasGroup.interactable = true;
+            canvasGroup.blocksRaycasts = true;
+
             if (messageText == null)
-                messageText = dialogInstance.GetComponentInChildren<TextMeshProUGUI>(true);
+                messageText = dialogInstance.GetComponentInChildren<TMPro.TextMeshProUGUI>(true);
             if (okButton == null)
             {
-                var buttons = dialogInstance.GetComponentsInChildren<Button>(true);
+                var buttons = dialogInstance.GetComponentsInChildren<UnityEngine.UI.Button>(true);
                 if (buttons.Length > 0) okButton = buttons[0];
             }
             if (messageText == null)
-                messageText = dialogInstance.GetComponentInChildren<TextMeshProUGUI>(true);
+                messageText = dialogInstance.GetComponentInChildren<TMPro.TextMeshProUGUI>(true);
+
+            // Timeout 텍스트 찾기
+            if (timeoutText == null)
+            {
+                var tmps = dialogInstance.GetComponentsInChildren<TMPro.TextMeshProUGUI>(true);
+                foreach (var tmp in tmps)
+                {
+                    if (tmp.gameObject.name.ToLower().Contains("timeout"))
+                    {
+                        timeoutText = tmp;
+                        break;
+                    }
+                }
+            }
 
             if (messageText != null) messageText.text = LocalizationManager.GetText(message);
             onOkCallback = onOk;
-            if (okButton != null)
+
+            if (timeoutSeconds > 0)
             {
-                okButton.onClick.RemoveAllListeners();
-                okButton.onClick.AddListener(OnOkClicked);
+                isTimeoutMode = true;
+                timeoutRemaining = timeoutSeconds;
+                if (okButton != null) okButton.gameObject.SetActive(false);
+                if (timeoutText != null) timeoutText.gameObject.SetActive(true);
+            }
+            else
+            {
+                isTimeoutMode = false;
+                if (okButton != null)
+                {
+                    okButton.gameObject.SetActive(true);
+                    okButton.onClick.RemoveAllListeners();
+                    okButton.onClick.AddListener(OnOkClicked);
+                }
+                if (timeoutText != null) timeoutText.gameObject.SetActive(false);
             }
         }
 
         public void Hide()
         {
             if (dialogInstance != null)
+                StartCoroutine(FadeOut());
+            isTimeoutMode = false;
+        }
+
+        private IEnumerator FadeIn()
+        {
+            if (canvasGroup == null) yield break;
+            canvasGroup.alpha = 0f;
+            canvasGroup.interactable = false;
+            canvasGroup.blocksRaycasts = false;
+            float t = 0f;
+            while (t < 1f)
+            {
+                t += Time.unscaledDeltaTime * 4f; // 0.25초 정도
+                canvasGroup.alpha = Mathf.Lerp(0f, 1f, t);
+                yield return null;
+            }
+            canvasGroup.alpha = 1f;
+            canvasGroup.interactable = true;
+            canvasGroup.blocksRaycasts = true;
+        }
+
+        private IEnumerator FadeOut()
+        {
+            if (canvasGroup == null || dialogInstance == null) yield break;
+            canvasGroup.interactable = false;
+            canvasGroup.blocksRaycasts = false;
+            float t = 0f;
+            while (t < 1f)
+            {
+                t += Time.unscaledDeltaTime * 4f;
+                // 파괴 체크
+                if (canvasGroup == null || dialogInstance == null || canvasGroup.Equals(null) || dialogInstance.Equals(null))
+                    yield break;
+                canvasGroup.alpha = Mathf.Lerp(1f, 0f, t);
+                yield return null;
+            }
+            if (canvasGroup != null && dialogInstance != null && !canvasGroup.Equals(null) && !dialogInstance.Equals(null))
+            {
+                canvasGroup.alpha = 0f;
                 dialogInstance.SetActive(false);
+            }
         }
 
         private void OnOkClicked()
         {
             Hide();
             onOkCallback?.Invoke();
+        }
+
+        private void Update()
+        {
+            if (isTimeoutMode && dialogInstance != null && dialogInstance.activeSelf)
+            {
+                timeoutRemaining -= Time.unscaledDeltaTime;
+                if (timeoutText != null)
+                {
+                    int seconds = Mathf.CeilToInt(timeoutRemaining);
+                    timeoutText.text = $"{seconds}";
+                }
+                if (timeoutRemaining <= 0f)
+                {
+                    Hide();
+                    onOkCallback?.Invoke();
+                }
+            }
+        }
+
+        public bool IsDialogActive()
+        {
+            return dialogInstance != null && dialogInstance.activeSelf;
+        }
+
+        public IEnumerator ShowAndWait(string message, Action onOk = null, float timeoutSeconds = 0, float preDelay = 0f, float postDelay = 0f)
+        {
+            if (preDelay > 0f)
+                yield return new UnityEngine.WaitForSeconds(preDelay);
+            Show(message, onOk, timeoutSeconds);
+            while (IsDialogActive())
+                yield return null;
+            if (postDelay > 0f)
+                yield return new UnityEngine.WaitForSeconds(postDelay);
         }
     }
 } 

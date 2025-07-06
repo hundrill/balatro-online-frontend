@@ -112,23 +112,14 @@ namespace BalatroOnline.InGame
         public void OnClickHandPlayReady()
         {
             Debug.Log("[InGameUIManager] HandPlayReady 버튼 클릭됨");
+            DisablePlayButtons(); // 버튼 즉시 비활성화
             var myPlayer = BalatroOnline.Common.GameManager.Instance.myPlayer;
             if (myPlayer != null)
             {
                 var selected = myPlayer.GetSelectedCardInfos();
                 Debug.Log($"[InGameUIManager] 선택된 카드: {selected.Count}장");
-                // 준비 완료 메시지창 띄우고 OK 시 실제 서버 전송
-                BalatroOnline.Common.MessageDialogManager.Instance.Show("준비 완료!", () =>
-                {
-                    if (BalatroOnline.InGame.InGameSceneManager.Instance != null)
-                    {
-                        BalatroOnline.InGame.InGameSceneManager.Instance.OnHandPlayReady(selected);
-                    }
-                    else
-                    {
-                        Debug.LogWarning("[InGameUIManager] InGameSceneManager.Instance가 null");
-                    }
-                });
+
+                BalatroOnline.InGame.InGameSceneManager.Instance.SendOnHandPlayReady(selected);
             }
             else
             {

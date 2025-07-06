@@ -91,6 +91,14 @@
         {
             "key": "join",
             "value": "참가"
+        },
+        {
+            "key": "hand_play_ready_complete",
+            "value": "핸드 준비 완료!"
+        },
+        {
+            "key": "next_round_ready_complete",
+            "value": "다음 라운드 준비 완료!"
         }
     ]
 }

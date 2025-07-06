@@ -35,20 +35,22 @@ namespace BalatroOnline.Common
 
 
         // 서버에서 카드 분배 메시지 수신 시 호출
-        public void OnReceiveCardDeal(List<CardData> myCards, List<int> opponentCardCounts)
+        public void OnReceiveCardDeal(List<CardData> myCards, List<string> opponentIds)
         {
             if (myPlayer != null)
                 myPlayer.ReceiveInitialCards(myCards);
 
-            /*
-            for (int i = 0; i < opponentSlots.Count; i++)
+            // 상대방 카드 딜링 (유저 할당 없이 카드만)
+            if (cardDealer != null && opponentIds != null)
             {
-                if (i < opponentCardCounts.Count)
-                    opponentSlots[i].SetCardCount(opponentCardCounts[i]);
-                else
-                    opponentSlots[i].SetCardCount(0);
+                for (int i = 0; i < opponentIds.Count && i < 3; i++)
+                {
+                    for (int j = 0; j < 8; j++)
+                    {
+                        cardDealer.DealOpponentCard(i, j);
+                    }
+                }
             }
-            */
         }
     }
 }

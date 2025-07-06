@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using Best.HTTP.JSON.LitJson;
 using System.Linq;
 using BalatroOnline.Game;
+using System.Collections;
 
 namespace BalatroOnline.InGame
 {
@@ -116,8 +117,7 @@ namespace BalatroOnline.InGame
             // SocketManager에서 직접 핸들러를 호출하므로 이벤트 구독 해제 불필요
         }
 
-        // HandPlayReady 실제 서버 전송/로직 담당
-        public void OnHandPlayReady(List<Dictionary<string, object>> selectedCards)
+        public void SendOnHandPlayReady(List<Dictionary<string, object>> selectedCards)
         {
             Debug.Log($"[InGameSceneManager] OnHandPlayReady 호출, 선택된 카드: {selectedCards.Count}장");
             var roomId = BalatroOnline.Common.SessionManager.Instance.CurrentRoomId;
@@ -134,6 +134,35 @@ namespace BalatroOnline.InGame
             var data = new Dictionary<string, object> { { "roomId", roomId }, { "hand", hand } };
             Debug.Log($"[InGameSceneManager] 서버로 handPlayReady 전송: {JsonMapper.ToJson(data)}");
             SocketManager.Instance.EmitToServer("handPlayReady", data);
+        }
+
+        // HandPlayReady 실제 서버 전송/로직 담당
+        public void OnHandPlayReady(object data)
+        {
+            // data: { userId: string }
+            if (data is Dictionary<string, object> dict && dict.TryGetValue("userId", out var userIdObj))
+            {
+                string userId = userIdObj.ToString();
+                string myUserId = BalatroOnline.Common.SessionManager.Instance.UserId;
+                if (userId == myUserId)
+                {
+                    if (mySlot != null) mySlot.SetReady(true);
+                }
+                else
+                {
+                    if (opponentSlots != null)
+                    {
+                        foreach (var slot in opponentSlots)
+                        {
+                            if (slot != null && slot.GetUserId() == userId)
+                            {
+                                slot.SetReady(true);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         // MySlot에서 discard 요청 위임 시 처리
@@ -157,127 +186,155 @@ namespace BalatroOnline.InGame
         public void OnHandPlayResult(object data)
         {
             Debug.Log("[InGameSceneManager] handPlayResult 이벤트 수신");
+
+            StartCoroutine("OnHandPlayResultCo", data);
+        }
+        public IEnumerator OnHandPlayResultCo(object data)
+        {
+            Debug.Log("[InGameSceneManager] OnHandPlayResultCo ");
+
+            yield return BalatroOnline.Common.MessageDialogManager.Instance.ShowAndWait("모든 유져의 준비가 끝났습니다. 핸드 플레이 결과 발표를 시작 합니다.", null, 3f, 2f);
+
+            // 발표 직전 readyIndicator 모두 숨김
+            if (mySlot != null) mySlot.SetReady(false);
+            if (opponentSlots != null)
+            {
+                foreach (var slot in opponentSlots)
+                    if (slot != null) slot.SetReady(false);
+            }
+
             if (data == null)
             {
                 Debug.LogWarning("[InGameSceneManager] handPlayResult 데이터가 null");
-                return;
+                yield break;
             }
             string jsonStr = JsonMapper.ToJson(data);
             Debug.Log($"[InGameSceneManager] handPlayResult 원본 데이터: {jsonStr}");
 
-
-            // === 기존 handPlayResult 처리 ===
-            // handPlayResult 수신 메시지창 + OK 시 카드 이동
-            BalatroOnline.Common.MessageDialogManager.Instance.Show($"handPlayResult 수신!\n{jsonStr}", () =>
+            if (data is Dictionary<string, object> dict && dict.TryGetValue("hands", out var handsObj))
             {
-                if (data is Dictionary<string, object> dict && dict.TryGetValue("hands", out var handsObj))
+                List<object> handsList = null;
+                if (handsObj is object[] arr) handsList = arr.ToList();
+                else if (handsObj is List<object> list) handsList = list;
+                if (handsList != null)
                 {
-                    List<object> handsList = null;
-                    if (handsObj is object[] arr) handsList = arr.ToList();
-                    else if (handsObj is List<object> list) handsList = list;
-                    if (handsList != null)
-                    {
-                        string myUserId = SessionManager.Instance?.UserId;
-                        Debug.Log($"[InGameSceneManager] myUserId: {myUserId}");
-                        if (!string.IsNullOrEmpty(myUserId))
-                        {
-                            foreach (var handObj in handsList)
-                            {
-                                if (handObj is Dictionary<string, object> handDict && handDict.TryGetValue("userId", out var uidObj) && uidObj.ToString() == myUserId)
-                                {
-                                    if (handDict.TryGetValue("hand", out var myHandObj))
-                                    {
-                                        List<object> myHandList = null;
-                                        if (myHandObj is List<object> list2)
-                                            myHandList = list2;
-                                        else if (myHandObj is object[] arr2)
-                                            myHandList = arr2.ToList();
-                                        Debug.Log($"[InGameSceneManager] myHandObj type: {myHandObj?.GetType()} value: {JsonMapper.ToJson(myHandObj)}");
-                                        Debug.Log($"[InGameSceneManager] myHandList: {myHandList}");
-                                        if (myHandList != null)
-                                        {
-                                            var myHand = new List<BalatroOnline.Game.CardData>();
-                                            foreach (var c in myHandList)
-                                            {
-                                                if (c is Dictionary<string, object> cdict)
-                                                {
-                                                    string suit = cdict["suit"].ToString();
-                                                    int rank = int.Parse(cdict["rank"].ToString());
-                                                    Debug.Log($"[InGameSceneManager] 카드 변환: suit={suit}, rank={rank}");
-                                                    myHand.Add(new BalatroOnline.Game.CardData(suit, rank));
-                                                }
-                                                else
-                                                {
-                                                    Debug.LogWarning($"[InGameSceneManager] myHandList 원소가 Dictionary가 아님: {c?.GetType()} {c}");
-                                                }
-                                            }
-                                            var myPlayer = GameManager.Instance?.myPlayer;
-                                            if (myPlayer != null)
-                                            {
-                                                myPlayer.MoveHandPlayCardsToCenter(myHand);
-                                                myPlayer.FixHandCards();
-                                            }
-                                            // 버튼 비활성화
-                                            var uiMgr = InGameUIManager.Instance;
-                                            if (uiMgr != null)
-                                                uiMgr.DisablePlayButtons();
+                    string myUserId = SessionManager.Instance?.UserId;
+                    Debug.Log($"[InGameSceneManager] myUserId: {myUserId}");
 
-                                            // 5초 후에 모든 핸드 플레이 발표 완료 메시지 박스 띄우기
-                                            BalatroOnline.Common.MessageDialogManager.Instance.Show("모든 핸드 플레이 발표가 끝났습니다.", () =>
-                                            {
-                                                // 샵 오픈은 ShopManager에서 관리
-                                                // === shopCards 5장 로그 추가 및 ShopManager 연동 ===
-                                                if (data is Dictionary<string, object> dict && dict.TryGetValue("shopCards", out var shopCardsObj) && shopCardsObj is IList<object> shopCardsList)
-                                                {
-                                                    Debug.Log($"[InGameSceneManager] 이번 라운드 샵 카드 5장: 총 {shopCardsList.Count}장");
-                                                    var shopCardDataList = new List<ServerCardData>();
-                                                    for (int i = 0; i < shopCardsList.Count; i++)
-                                                    {
-                                                        if (shopCardsList[i] is Dictionary<string, object> cardDict)
-                                                        {
-                                                            string id = cardDict.TryGetValue("id", out var idObj) ? idObj.ToString() : "";
-                                                            string type = cardDict.TryGetValue("type", out var typeObj) ? typeObj.ToString() : "joker";
-                                                            int price = cardDict.TryGetValue("price", out var priceObj) ? int.Parse(priceObj.ToString()) : 0;
-                                                            int sprite = cardDict.TryGetValue("sprite", out var spriteObj) ? int.Parse(spriteObj.ToString()) : 0;
-                                                            string name = cardDict.TryGetValue("name", out var nameObj) ? nameObj.ToString() : "";
-                                                            string description = cardDict.TryGetValue("description", out var descObj) ? descObj.ToString() : "";
-                                                            shopCardDataList.Add(new ServerCardData { id = id, type = type, price = price, sprite = sprite, name = name, description = description });
-                                                            Debug.Log($"[InGameSceneManager] [샵카드{i + 1}] id={id}, type={type}, price={price}, sprite={sprite}, name={name}, desc={description}");
-                                                        }
-                                                        else
-                                                        {
-                                                            Debug.LogWarning($"[InGameSceneManager] shopCards[{i}]가 Dictionary가 아님: {shopCardsList[i]?.GetType()} {shopCardsList[i]}");
-                                                        }
-                                                    }
-                                                    // ShopManager에 전달하여 샵 UI 오픈
-                                                    if (ShopManager.Instance != null)
-                                                    {
-                                                        ShopManager.Instance.ShowShop(shopCardDataList);
-                                                    }
-                                                }
-                                                else
-                                                {
-                                                    Debug.Log("[InGameSceneManager] shopCards 정보 없음");
-                                                }
-                                            });
-                                        }
-                                        else
+                    foreach (var handObj in handsList)
+                    {
+                        if (handObj is Dictionary<string, object> handDict && handDict.TryGetValue("userId", out var uidObj))
+                        {
+                            string userId = uidObj.ToString();
+                            if (handDict.TryGetValue("hand", out var handDataObj))
+                            {
+                                List<object> handDataList = null;
+                                if (handDataObj is List<object> l) handDataList = l;
+                                else if (handDataObj is object[] a) handDataList = a.ToList();
+                                if (handDataList != null)
+                                {
+                                    var cardList = new List<BalatroOnline.Game.CardData>();
+                                    foreach (var c in handDataList)
+                                    {
+                                        if (c is Dictionary<string, object> cdict)
                                         {
-                                            Debug.LogWarning("[InGameSceneManager] myHandList 파싱 실패");
+                                            string suit = cdict["suit"].ToString();
+                                            int rank = int.Parse(cdict["rank"].ToString());
+                                            cardList.Add(new BalatroOnline.Game.CardData(suit, rank));
                                         }
                                     }
-                                    break;
+
+                                    yield return BalatroOnline.Common.MessageDialogManager.Instance.ShowAndWait($"{userId} 의 결과를 발표 합니다.", null, 2f, 0f, 1f);
+
+                                    if (userId == myUserId)
+                                    {
+                                        var myPlayer = GameManager.Instance?.myPlayer;
+                                        if (myPlayer != null)
+                                        {
+                                            myPlayer.MoveHandPlayCardsToCenter(cardList);
+                                            myPlayer.FixHandCards();
+                                        }
+                                        var uiMgr = InGameUIManager.Instance;
+                                        if (uiMgr != null)
+                                            uiMgr.DisablePlayButtons();
+                                    }
+                                    else
+                                    {
+                                        // 상대방 OpponentSlot 찾아서 카드 오픈
+                                        if (opponentSlots != null)
+                                        {
+                                            foreach (var slot in opponentSlots)
+                                            {
+                                                if (slot != null && slot.GetUserId() == userId)
+                                                {
+                                                    slot.OpenHandPlayCardsToCenter(cardList);
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    yield return new WaitForSeconds(3f);
                                 }
                             }
                         }
                     }
                 }
-            });
+            }
+
+            yield return BalatroOnline.Common.MessageDialogManager.Instance.ShowAndWait("모든 유져의 결과 발표가 끝났습니다.", null, 3f);
+
+
+            // 샵 오픈은 ShopManager에서 관리
+            // === shopCards 5장 로그 추가 및 ShopManager 연동 ===
+            if (data is Dictionary<string, object> dict2 && dict2.TryGetValue("shopCards", out var shopCardsObj) && shopCardsObj is IList<object> shopCardsList)
+            {
+                Debug.Log($"[InGameSceneManager] 이번 라운드 샵 카드 5장: 총 {shopCardsList.Count}장");
+                var shopCardDataList = new List<ServerCardData>();
+                for (int i = 0; i < shopCardsList.Count; i++)
+                {
+                    if (shopCardsList[i] is Dictionary<string, object> cardDict)
+                    {
+                        string id = cardDict.TryGetValue("id", out var idObj) ? idObj.ToString() : "";
+                        string type = cardDict.TryGetValue("type", out var typeObj) ? typeObj.ToString() : "joker";
+                        int price = cardDict.TryGetValue("price", out var priceObj) ? int.Parse(priceObj.ToString()) : 0;
+                        int sprite = cardDict.TryGetValue("sprite", out var spriteObj) ? int.Parse(spriteObj.ToString()) : 0;
+                        string name = cardDict.TryGetValue("name", out var nameObj) ? nameObj.ToString() : "";
+                        string description = cardDict.TryGetValue("description", out var descObj) ? descObj.ToString() : "";
+                        shopCardDataList.Add(new ServerCardData { id = id, type = type, price = price, sprite = sprite, name = name, description = description });
+                        Debug.Log($"[InGameSceneManager] [샵카드{i + 1}] id={id}, type={type}, price={price}, sprite={sprite}, name={name}, desc={description}");
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"[InGameSceneManager] shopCards[{i}]가 Dictionary가 아님: {shopCardsList[i]?.GetType()} {shopCardsList[i]}");
+                    }
+                }
+                // ShopManager에 전달하여 샵 UI 오픈
+                if (ShopManager.Instance != null)
+                {
+                    ShopManager.Instance.ShowShop(shopCardDataList);
+                }
+
+            }
+            else
+            {
+                Debug.Log("[InGameSceneManager] shopCards 정보 없음");
+            }
         }
 
         // startGame 핸들러 구현
         public void OnStartGame(object data)
         {
+            StartCoroutine("OnStartGameCo", data);
+        }
+
+        IEnumerator OnStartGameCo(object data)
+        {
+            yield return MessageDialogManager.Instance.ShowAndWait("게임을 시작 합니다.", null, 2f, 1f);
+
+            // 라운드 시작 시 모든 ready indicator 숨김
+            ResetAllReadyIndicators();
+
             // 라운드 시작 시 UI/카드/버튼 초기화
             var uiMgr = InGameUIManager.Instance;
             if (uiMgr != null) uiMgr.ResetForNewRound();
@@ -318,20 +375,20 @@ namespace BalatroOnline.InGame
                             }
                         }
                     }
-                    var opponentCounts = new List<int>();
+                    var opponentIds = new List<string>();
                     if (opponentsObj is object[] oppArr)
                     {
-                        foreach (var cnt in oppArr)
-                            opponentCounts.Add(int.Parse(cnt.ToString()));
+                        foreach (var id in oppArr)
+                            opponentIds.Add(id.ToString());
                     }
                     else if (opponentsObj is List<object> oppList)
                     {
-                        foreach (var cnt in oppList)
-                            opponentCounts.Add(int.Parse(cnt.ToString()));
+                        foreach (var id in oppList)
+                            opponentIds.Add(id.ToString());
                     }
                     if (BalatroOnline.Common.GameManager.Instance != null)
                     {
-                        BalatroOnline.Common.GameManager.Instance.OnReceiveCardDeal(myCardsList, opponentCounts);
+                        BalatroOnline.Common.GameManager.Instance.OnReceiveCardDeal(myCardsList, opponentIds);
                     }
                 }
             }
@@ -552,6 +609,59 @@ namespace BalatroOnline.InGame
                                     slot.SetUser(userId, nickname);
                                     break;
                                 }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        public void ResetAllReadyIndicators()
+        {
+            if (mySlot != null)
+            {
+                if (mySlot.handPlayReadyIndicator != null)
+                    mySlot.handPlayReadyIndicator.SetActive(false);
+                if (mySlot.nextRoundReadyIndicator != null)
+                    mySlot.nextRoundReadyIndicator.SetActive(false);
+            }
+            if (opponentSlots != null)
+            {
+                foreach (var slot in opponentSlots)
+                {
+                    if (slot != null)
+                    {
+                        if (slot.handPlayReadyIndicator != null)
+                            slot.handPlayReadyIndicator.SetActive(false);
+                        if (slot.nextRoundReadyIndicator != null)
+                            slot.nextRoundReadyIndicator.SetActive(false);
+                    }
+                }
+            }
+        }
+
+        public void OnNextRoundReady(object data)
+        {
+            // data: { userId: string }
+            if (data is Dictionary<string, object> dict && dict.TryGetValue("userId", out var userIdObj))
+            {
+                string userId = userIdObj.ToString();
+                string myUserId = BalatroOnline.Common.SessionManager.Instance.UserId;
+                if (userId == myUserId)
+                {
+                    if (mySlot != null && mySlot.nextRoundReadyIndicator != null)
+                        mySlot.nextRoundReadyIndicator.SetActive(true);
+                }
+                else
+                {
+                    if (opponentSlots != null)
+                    {
+                        foreach (var slot in opponentSlots)
+                        {
+                            if (slot != null && slot.GetUserId() == userId && slot.nextRoundReadyIndicator != null)
+                            {
+                                slot.nextRoundReadyIndicator.SetActive(true);
+                                break;
                             }
                         }
                     }

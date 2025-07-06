@@ -173,6 +173,18 @@ public class SocketManager : MonoBehaviour
             eventQueue.Enqueue(new SocketEvent { type = SocketEventType.RoomUsers, payload = data });
         });
 
+        socket.Socket.On<object>("handPlayReady", (data) =>
+        {
+            Debug.Log("[SocketManager] handPlayReady 이벤트 수신: " + data);
+            eventQueue.Enqueue(new SocketEvent { type = SocketEventType.HandPlayReady, payload = data });
+        });
+
+        socket.Socket.On<object>("nextRoundReady", (data) =>
+        {
+            Debug.Log("[SocketManager] nextRoundReady 이벤트 수신: " + data);
+            eventQueue.Enqueue(new SocketEvent { type = SocketEventType.NextRoundReady, payload = data });
+        });
+
         Debug.Log("📡 모든 Socket.IO 이벤트 리스너 등록 완료");
     }
 
@@ -209,6 +221,12 @@ public class SocketManager : MonoBehaviour
                 break;
             case SocketEventType.RoomUsers:
                 if (InGameSceneManager.Instance != null) { InGameSceneManager.Instance.OnRoomUsers(socketEvent.payload); handled = true; }
+                break;
+            case SocketEventType.HandPlayReady:
+                if (InGameSceneManager.Instance != null) { InGameSceneManager.Instance.OnHandPlayReady(socketEvent.payload); handled = true; }
+                break;
+            case SocketEventType.NextRoundReady:
+                if (InGameSceneManager.Instance != null) { InGameSceneManager.Instance.OnNextRoundReady(socketEvent.payload); handled = true; }
                 break;
         }
         if (!handled)
@@ -341,7 +359,9 @@ public class SocketManager : MonoBehaviour
         StartGame,
         DiscardResult,
         BuyCardResult,
-        RoomUsers
+        RoomUsers,
+        HandPlayReady,
+        NextRoundReady
     }
 
     private class SocketEvent
