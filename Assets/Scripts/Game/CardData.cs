@@ -1,4 +1,5 @@
 using UnityEngine;
+using System;
 
 namespace BalatroOnline.Game
 {
@@ -7,11 +8,11 @@ namespace BalatroOnline.Game
 
     public class CardData
     {
-        public string suit; // "Clubs", "Diamonds", "Hearts", "Spades"
+        public CardType suit; // "Clubs", "Diamonds", "Hearts", "Spades"
         public int rank;    // 1~13 (A~K)
         public Sprite sprite;
 
-        public CardData(string suit, int rank)
+        public CardData(CardType suit, int rank)
         {
             this.suit = suit;
             this.rank = rank;
@@ -19,7 +20,20 @@ namespace BalatroOnline.Game
         }
 
         // Poker용 enum 변환 프로퍼티
-        public CardType TypeEnum => (CardType)System.Enum.Parse(typeof(CardType), suit);
+        public CardType TypeEnum => suit;
         public CardValue ValueEnum => (CardValue)rank;
+
+        // CardType <-> string 변환 유틸리티
+        public static CardType StringToCardType(string suit)
+        {
+            if (Enum.TryParse<CardType>(suit, ignoreCase: true, out var result))
+                return result;
+            throw new ArgumentException($"Invalid suit string: {suit}");
+        }
+
+        public static string CardTypeToString(CardType suit)
+        {
+            return suit.ToString();
+        }
     }
-} 
+}

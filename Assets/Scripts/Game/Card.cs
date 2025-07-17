@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using System.Collections;
+using TMPro;
 
 namespace BalatroOnline.Game
 {
@@ -21,12 +22,16 @@ namespace BalatroOnline.Game
 
         public System.Action<Card> OnMoveComplete;
         public MySlot myPlayer; // 외부에서 할당
+        public TextMeshProUGUI AddCardScore; // 핸드플레이 시 카드 위에 표시되는 추가 점수 텍스트
 
         public bool isInteractable = true;
         public void SetInteractable(bool interactable)
         {
             isInteractable = interactable;
         }
+
+        private float cardScoreValue = 0;
+        public float CardScoreValue => cardScoreValue;
 
         void Awake()
         {
@@ -46,6 +51,7 @@ namespace BalatroOnline.Game
             }
             // 상위에서 Canvas 찾기 (좌표 변환용)
             canvas = GetComponentInParent<Canvas>();
+            cardScoreValue = 0;
         }
 
         public bool IsSelected() => isSelected;
@@ -228,10 +234,32 @@ namespace BalatroOnline.Game
         {
             SetBack(back);
             SetInteractable(false);
-            // CardDataHolder 제거(있으면)
-            var holder = GetComponent<CardDataHolder>();
-            if (holder != null)
-                Destroy(holder);
+        }
+
+        /// <summary>
+        /// 카드 점수 누적 및 표시
+        /// </summary>
+        public void ShowAndStoreCardScore(float value)
+        {
+            cardScoreValue += value;
+            if (AddCardScore)
+            {
+                AddCardScore.text = $"+{cardScoreValue}";
+                AddCardScore.gameObject.SetActive(true);
+            }
+        }
+
+        /// <summary>
+        /// 카드 점수 표시 숨기고 값 초기화
+        /// </summary>
+        public void ResetCardScoreDisplay()
+        {
+            cardScoreValue = 0;
+            if (AddCardScore)
+            {
+                AddCardScore.text = "";
+                AddCardScore.gameObject.SetActive(false);
+            }
         }
     }
 }

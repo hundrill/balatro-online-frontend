@@ -19,6 +19,7 @@ namespace BalatroOnline.Common
         private float timeoutRemaining;
         private bool isTimeoutMode;
         private CanvasGroup canvasGroup;
+        private Coroutine fadeOutCoroutine;
 
         private void Awake()
         {
@@ -35,6 +36,13 @@ namespace BalatroOnline.Common
 
         public void Show(string message, Action onOk = null, float timeoutSeconds = 0)
         {
+            // 이전 페이드아웃 코루틴이 실행 중이면 취소
+            if (fadeOutCoroutine != null)
+            {
+                StopCoroutine(fadeOutCoroutine);
+                fadeOutCoroutine = null;
+            }
+
             if (dialogInstance == null)
             {
                 var canvas = FindFirstObjectByType<Canvas>();
@@ -108,7 +116,7 @@ namespace BalatroOnline.Common
         public void Hide()
         {
             if (dialogInstance != null)
-                StartCoroutine(FadeOut());
+                fadeOutCoroutine = StartCoroutine(FadeOut());
             isTimeoutMode = false;
         }
 
@@ -150,6 +158,7 @@ namespace BalatroOnline.Common
                 canvasGroup.alpha = 0f;
                 dialogInstance.SetActive(false);
             }
+            fadeOutCoroutine = null;
         }
 
         private void OnOkClicked()
@@ -183,6 +192,12 @@ namespace BalatroOnline.Common
 
         public IEnumerator ShowAndWait(string message, Action onOk = null, float timeoutSeconds = 0, float preDelay = 0f, float postDelay = 0f)
         {
+            if (TestConfig.Instance.isTestMode){
+                if (timeoutSeconds > 0.5f) timeoutSeconds = 0.5f;
+                if (preDelay > 0.5f) preDelay = 0.5f;
+                if (postDelay > 0.5f) postDelay = 0.5f;
+            }
+
             if (preDelay > 0f)
                 yield return new UnityEngine.WaitForSeconds(preDelay);
             Show(message, onOk, timeoutSeconds);

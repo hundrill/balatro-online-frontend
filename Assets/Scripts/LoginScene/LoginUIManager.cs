@@ -4,6 +4,7 @@ using BalatroOnline.Network;
 using BalatroOnline.Common;
 using UnityEngine.UI;
 using BalatroOnline.Localization;
+using System.Collections.Generic; // Added for Dictionary
 
 namespace BalatroOnline.Login
 {
@@ -33,7 +34,13 @@ namespace BalatroOnline.Login
         {
             // 로그인 중 메시지 다이얼로그 표시 (언어팩)
             MessageDialogManager.Instance.Show(LocalizationManager.GetText("logging_in"));
-            ApiManager.Instance.Login(idInput.text, passwordInput.text, OnLoginResult);
+
+            SocketManager.Instance.Connect();
+        }
+
+        public void OnSocketConnectedForLogin()
+        {
+            SocketManager.Instance.EmitToServer(new LoginRequest(idInput.text, passwordInput.text));
         }
 
         public void OnClickEnglish()
@@ -63,25 +70,25 @@ namespace BalatroOnline.Login
             }
         }
 
-        private void OnLoginResult(Network.Protocol.LoginResponse res)
+        public void OnLoginResult(LoginResponse loginResponse)
         {
-            if (res.success)
+            if (loginResponse != null)
             {
-                Debug.Log($"Login success! Welcome, {res.user?.nickname}");
+                Debug.Log($"Login success! Welcome, {loginResponse.nickname} (Email: {loginResponse.email}, Silver: {loginResponse.silverChip}, Gold: {loginResponse.goldChip})");
 
-                BalatroOnline.Common.SessionManager.Instance.UserId = res.user?.email;
+                // 사용자 정보를 SessionManager에 저장
+                SessionManager.Instance.UserId = loginResponse.email;
+                SessionManager.Instance.UserNickname = loginResponse.nickname;
+                SessionManager.Instance.SilverChip = loginResponse.silverChip;
+                SessionManager.Instance.GoldChip = loginResponse.goldChip;
 
-                // 로그인 성공 후 Socket.IO 연결
-                SocketManager.Instance.Connect();
-
-                // TODO: 성공 시 씬 전환 등 처리
-                UnityEngine.SceneManagement.SceneManager.LoadScene("ChannelScene");
+                // 로그인 성공 후 씬 전환
+                UnityEngine.SceneManagement.SceneManager.LoadScene("LobbyScene");
             }
             else
             {
-                Debug.LogError($"Login failed: {res.message} (code: {res.code})");
-                // TODO: 실패 메시지 UI 표시
-                MessageDialogManager.Instance.Show(res.message);
+                Debug.LogError("[LoginUIManager] OnLoginResult: LoginResponse가 null입니다");
+                MessageDialogManager.Instance.Show("로그인 처리 중 오류가 발생했습니다.");
             }
         }
     }

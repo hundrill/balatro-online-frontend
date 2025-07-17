@@ -86,7 +86,11 @@
         },
         {
             "key": "buy",
-            "value": "Buy"
+            "value": "Beli"
+        },
+        {
+            "key": "sell",
+            "value": "Jual"
         },
         {
             "key": "join",
@@ -99,6 +103,78 @@
         {
             "key": "next_round_ready_complete",
             "value": "Ronde Berikut Selesai!"
+        },
+        {
+            "key": "ranking",
+            "value": "Peringkat"
+        },
+        {
+            "key": "friend",
+            "value": "Teman"
+        },
+        {
+            "key": "challenge",
+            "value": "Tantangan"
+        },
+        {
+            "key": "select_channel",
+            "value": "Pilih Saluran"
+        },
+        {
+            "key": "beginner",
+            "value": "Pemula"
+        },
+        {
+            "key": "intermediate",
+            "value": "Menengah"
+        },
+        {
+            "key": "expert",
+            "value": "Ahli"
+        },
+        {
+            "key": "master",
+            "value": "Master"
+        },
+        {
+            "key": "unlimited_vip",
+            "value": "VIP Tak Terbatas"
+        },
+        {
+            "key": "shop",
+            "value": "Toko"
+        },
+        {
+            "key": "mail_box",
+            "value": "Kotak Surat"
+        },
+        {
+            "key": "seed",
+            "value": "Seed"
+        },
+        {
+            "key": "betting",
+            "value": "Taruhan"
+        },
+        {
+            "key": "close",
+            "value": "Tutup"
+        },
+        {
+            "key": "create",
+            "value": "Buat"
+        },
+        {
+            "key": "quick_start",
+            "value": "Mulai Cepat"
+        },
+        {
+            "key": "no_limit",
+            "value": "Tidak Terbatas"
+        },
+        {
+            "key": "win",
+            "value": "Menang"
         }
     ]
 }

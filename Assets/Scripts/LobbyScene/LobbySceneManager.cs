@@ -20,11 +20,5 @@ namespace BalatroOnline.Lobby
             }
             Instance = this;
         }
-
-        public void OnClickEnterGame()
-        {
-            // TODO: 게임 씬으로 전환
-            UnityEngine.SceneManagement.SceneManager.LoadScene("GameScene");
-        }
     }
-} 
+}

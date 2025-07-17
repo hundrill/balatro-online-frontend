@@ -6,6 +6,7 @@ using BalatroOnline.Common;
 using BalatroOnline.Lobby;
 using BalatroOnline.InGame;
 using BalatroOnline.Login;
+using BalatroOnline.Network.SocketProtocol;
 
 public class SocketManager : MonoBehaviour
 {
@@ -32,8 +33,17 @@ public class SocketManager : MonoBehaviour
     private bool isConnected = false;
 
     // 이벤트 큐 정의
-    private Queue<SocketEvent> eventQueue = new Queue<SocketEvent>();
+    private readonly Queue<SocketEvent> eventQueue = new Queue<SocketEvent>();
     private SocketEvent currentEvent = null;
+
+    // 이벤트 핸들러 캐시
+    private readonly Dictionary<string, Func<object, bool>> eventHandlers = new Dictionary<string, Func<object, bool>>();
+
+    private class SocketEvent
+    {
+        public string type;
+        public object payload;
+    }
 
     private void Awake()
     {
@@ -41,6 +51,7 @@ public class SocketManager : MonoBehaviour
         {
             instance = this;
             DontDestroyOnLoad(gameObject);
+            InitializeEventHandlers();
         }
         else if (instance != this)
         {
@@ -48,9 +59,21 @@ public class SocketManager : MonoBehaviour
         }
     }
 
-    void Start()
+    private void InitializeEventHandlers()
     {
-        InitializeSocket();
+        eventHandlers[LoginResponse.EventNameConst] = HandleLoginResponse;
+        eventHandlers[UserJoinedResponse.EventNameConst] = HandleUserJoinedResponse;
+        eventHandlers[UserLeftResponse.EventNameConst] = HandleUserLeftResponse;
+        eventHandlers[RoomUsersResponse.EventNameConst] = HandleRoomUsersResponse;
+        eventHandlers[StartGameResponse.EventNameConst] = HandleStartGameResponse;
+        eventHandlers[DiscardResponse.EventNameConst] = HandleDiscardResponse;
+        eventHandlers[HandPlayReadyResponse.EventNameConst] = HandleHandPlayReadyResponse;
+        eventHandlers[HandPlayResultResponse.EventNameConst] = HandleHandPlayResultResponse;
+        eventHandlers[NextRoundReadyResponse.EventNameConst] = HandleNextRoundReadyResponse;
+        eventHandlers[BuyCardResponse.EventNameConst] = HandleBuyCardResponse;
+        eventHandlers[ReRollShopResponse.EventNameConst] = HandleReRollShopResponse;
+        eventHandlers[SellCardResponse.EventNameConst] = HandleSellCardResponse;
+        eventHandlers[CardPurchasedResponse.EventNameConst] = HandleCardPurchasedResponse;
     }
 
     void Update()
@@ -60,6 +83,7 @@ public class SocketManager : MonoBehaviour
         {
             currentEvent = eventQueue.Dequeue();
         }
+
         if (currentEvent != null)
         {
             bool handled = HandleSocketEvent(currentEvent);
@@ -67,7 +91,13 @@ public class SocketManager : MonoBehaviour
             {
                 currentEvent = null;
             }
-            // handled가 false면 currentEvent를 유지해서 다음 프레임에 재시도
+            else
+            {
+                // handled가 false면 currentEvent를 유지해서 다음 프레임에 재시도
+#if UNITY_EDITOR
+                Debug.LogWarning($"[SocketManager] 핸들러 처리 실패! payload: {currentEvent.payload}");
+#endif                
+            }
         }
     }
 
@@ -75,183 +105,222 @@ public class SocketManager : MonoBehaviour
     {
         var options = new SocketOptions();
         options.Reconnection = false;
+
         socket = new Best.SocketIO.SocketManager(new Uri(ServerConfig.Instance.GetHttpUrl()), options);
         Debug.Log("🔌 Socket.IO 초기화 완료 - 기본 네임스페이스 사용");
 
-        socket.Socket.On(SocketIOEventTypes.Connect, () =>
-        {
-            Debug.Log("✅ Socket.IO 연결 성공!");
-            isConnected = true;
-            Debug.Log("내 소켓 ID: " + socket.Socket.Id);
-            eventQueue.Enqueue(new SocketEvent { type = SocketEventType.Connected });
-        });
-
-        socket.Socket.On(SocketIOEventTypes.Disconnect, () =>
-        {
-            Debug.Log("❌ Socket.IO 연결 해제");
-            isConnected = false;
-            BalatroOnline.Common.MessageDialogManager.Instance?.Show("서버와의 연결이 끊어졌습니다.");
-        });
-
-        socket.Socket.On<object>("userJoined", (data) =>
-        {
-            Debug.Log("📨 userJoined 이벤트 수신됨!");
-            if (data is Dictionary<string, object> dict && dict.TryGetValue("userId", out var userIdObj))
-            {
-                string userId = userIdObj.ToString();
-                Debug.Log($"👤 유저 입장: {userId}");
-                eventQueue.Enqueue(new SocketEvent { type = SocketEventType.UserJoined, payload = userId });
-            }
-            else
-            {
-                Debug.LogWarning("userJoined 이벤트에서 userId를 찾을 수 없음");
-            }
-        });
-
-        socket.Socket.On<object>("userLeft", (data) =>
-        {
-            Debug.Log("📨 userLeft 이벤트 수신됨!");
-            if (data is Dictionary<string, object> dict && dict.TryGetValue("userId", out var userIdObj))
-            {
-                string userId = userIdObj.ToString();
-                Debug.Log($"👋 유저 퇴장: {userId}");
-                eventQueue.Enqueue(new SocketEvent { type = SocketEventType.UserLeft, payload = userId });
-            }
-            else
-            {
-                Debug.LogWarning("userLeft 이벤트에서 userId를 찾을 수 없음");
-            }
-        });
-
-        socket.Socket.On<object>("receiveMessage", (data) =>
-        {
-            Debug.Log("📨 receiveMessage 이벤트 수신됨!");
-            if (data is Dictionary<string, object> dict)
-            {
-                var msgData = new MessageData
-                {
-                    userId = dict.TryGetValue("userId", out var userIdObj) ? userIdObj.ToString() : "",
-                    content = dict.TryGetValue("message", out var contentObj) ? contentObj.ToString() : "",
-                    timestamp = System.DateTime.Now.ToString()
-                };
-                Debug.Log($"💬 메시지 수신: {msgData.content}");
-                eventQueue.Enqueue(new SocketEvent { type = SocketEventType.MessageReceived, payload = msgData });
-            }
-            else
-            {
-                Debug.LogWarning("receiveMessage 이벤트에서 데이터를 파싱할 수 없음");
-            }
-        });
-
-        socket.Socket.On<object>("startGame", (data) =>
-        {
-            Debug.Log($"[SocketManager] startGame 이벤트 수신: {data}");
-            eventQueue.Enqueue(new SocketEvent { type = SocketEventType.StartGame, payload = data });
-        });
-
-        socket.Socket.On<object>("discardResult", (data) =>
-        {
-            Debug.Log("[SocketManager] discardResult 이벤트 수신: " + data);
-            eventQueue.Enqueue(new SocketEvent { type = SocketEventType.DiscardResult, payload = data });
-        });
-
-        socket.Socket.On<object>("handPlayResult", (data) =>
-        {
-            Debug.Log("[SocketManager] handPlayResult 이벤트 수신: " + data);
-            eventQueue.Enqueue(new SocketEvent { type = SocketEventType.HandPlayResult, payload = data });
-        });
-
-        socket.Socket.On<object>("buyCardResult", (data) =>
-        {
-            Debug.Log("[SocketManager] buyCardResult 이벤트 수신: " + data);
-            eventQueue.Enqueue(new SocketEvent { type = SocketEventType.BuyCardResult, payload = data });
-        });
-
-        socket.Socket.On<object>("roomUsers", (data) =>
-        {
-            Debug.Log("📨 roomUsers 이벤트 수신됨!");
-            eventQueue.Enqueue(new SocketEvent { type = SocketEventType.RoomUsers, payload = data });
-        });
-
-        socket.Socket.On<object>("handPlayReady", (data) =>
-        {
-            Debug.Log("[SocketManager] handPlayReady 이벤트 수신: " + data);
-            eventQueue.Enqueue(new SocketEvent { type = SocketEventType.HandPlayReady, payload = data });
-        });
-
-        socket.Socket.On<object>("nextRoundReady", (data) =>
-        {
-            Debug.Log("[SocketManager] nextRoundReady 이벤트 수신: " + data);
-            eventQueue.Enqueue(new SocketEvent { type = SocketEventType.NextRoundReady, payload = data });
-        });
+        socket.Socket.On(SocketIOEventTypes.Connect, OnSocketConnected);
+        socket.Socket.On(SocketIOEventTypes.Disconnect, OnSocketDisconnected);
+        socket.Socket.On<object>("response", OnResponseReceived);
 
         Debug.Log("📡 모든 Socket.IO 이벤트 리스너 등록 완료");
     }
 
+    private void OnSocketConnected()
+    {
+        Debug.Log("✅ Socket.IO 연결 성공!");
+        isConnected = true;
+        Debug.Log("내 소켓 ID: " + socket.Socket.Id);
+        LoginUIManager.Instance?.OnSocketConnectedForLogin();
+    }
+
+    private void OnSocketDisconnected()
+    {
+        Debug.Log("❌ Socket.IO 연결 해제");
+        isConnected = false;
+        BalatroOnline.Common.MessageDialogManager.Instance?.Show("서버와의 연결이 끊어졌습니다.");
+    }
+
+    private void OnResponseReceived(object data)
+    {
+        Debug.Log($"[SocketManager] 이벤트 수신: {data}");
+        eventQueue.Enqueue(new SocketEvent { payload = data });
+    }
+
     private bool HandleSocketEvent(SocketEvent socketEvent)
     {
-        bool handled = false;
-        switch (socketEvent.type)
+        // eventName 확인 및 로그 출력
+        string eventName = BaseSocket.GetEventNameFromData(socketEvent.payload);
+        Debug.Log($"[SocketManager] HandleSocketEvent - eventName: {eventName}");
+
+        // 딕셔너리에서 핸들러 찾기
+        if (eventHandlers.TryGetValue(eventName, out var handler))
         {
-            case SocketEventType.Connected:
-                if (LoginSceneManager.Instance != null) { LoginSceneManager.Instance.OnSocketConnected(); handled = true; }
-                // if (InGameSceneManager.Instance != null) { InGameSceneManager.Instance.OnSocketConnected(); handled = true; }
-                break;
-            case SocketEventType.UserJoined:
-                if (LobbyUIManager.Instance != null) { LobbyUIManager.Instance.OnRoomJoinSuccess(socketEvent.payload as string); handled = true; }
-                // if (InGameSceneManager.Instance != null) { InGameSceneManager.Instance.OnUserJoined(socketEvent.payload as string); handled = true; }
-                break;
-            case SocketEventType.UserLeft:
-                if (InGameSceneManager.Instance != null) { InGameSceneManager.Instance.OnUserLeft(socketEvent.payload as string); handled = true; }
-                break;
-            case SocketEventType.MessageReceived:
-                if (InGameSceneManager.Instance != null) { InGameSceneManager.Instance.OnMessageReceived(socketEvent.payload as MessageData); handled = true; }
-                break;
-            case SocketEventType.HandPlayResult:
-                if (InGameSceneManager.Instance != null) { InGameSceneManager.Instance.OnHandPlayResult(socketEvent.payload); handled = true; }
-                break;
-            case SocketEventType.StartGame:
-                if (InGameSceneManager.Instance != null) { InGameSceneManager.Instance.OnStartGame(socketEvent.payload); handled = true; }
-                break;
-            case SocketEventType.DiscardResult:
-                if (InGameSceneManager.Instance != null) { InGameSceneManager.Instance.OnDiscardResult(socketEvent.payload); handled = true; }
-                break;
-            case SocketEventType.BuyCardResult:
-                if (InGameSceneManager.Instance != null) { InGameSceneManager.Instance.OnBuyCardResult(socketEvent.payload); handled = true; }
-                break;
-            case SocketEventType.RoomUsers:
-                if (InGameSceneManager.Instance != null) { InGameSceneManager.Instance.OnRoomUsers(socketEvent.payload); handled = true; }
-                break;
-            case SocketEventType.HandPlayReady:
-                if (InGameSceneManager.Instance != null) { InGameSceneManager.Instance.OnHandPlayReady(socketEvent.payload); handled = true; }
-                break;
-            case SocketEventType.NextRoundReady:
-                if (InGameSceneManager.Instance != null) { InGameSceneManager.Instance.OnNextRoundReady(socketEvent.payload); handled = true; }
-                break;
+            return handler(socketEvent.payload);
         }
-        if (!handled)
-        {
+
 #if UNITY_EDITOR
-            // throw new Exception($"[SocketManager] 이벤트({socketEvent.type})를 처리할 핸들러가 없습니다! payload: {socketEvent.payload}");
-            Debug.LogWarning($"[SocketManager] 이벤트({socketEvent.type})를 처리할 핸들러가 없습니다! payload: {socketEvent.payload}");
+        Debug.LogWarning($"[SocketManager] 이벤트({eventName})를 처리할 핸들러가 없습니다! payload: {socketEvent.payload}");
 #endif
+        return false;
+    }
+
+    // 개별 이벤트 핸들러들
+    private bool HandleLoginResponse(object payload)
+    {
+        var response = LoginResponse.FromPayload(payload);
+        if (response != null && LoginUIManager.Instance != null)
+        {
+            LoginUIManager.Instance.OnLoginResult(response);
+            return true;
         }
-        return handled;
+        return false;
+    }
+
+    private bool HandleUserJoinedResponse(object payload)
+    {
+        var response = UserJoinedResponse.FromPayload(payload);
+        if (response != null && LobbyUIManager.Instance != null)
+        {
+            LobbyUIManager.Instance.OnRoomJoinSuccess(response);
+            return true;
+        }
+        return false;
+    }
+
+    private bool HandleUserLeftResponse(object payload)
+    {
+        var response = UserLeftResponse.FromPayload(payload);
+        if (response != null && InGameSceneManager.Instance != null)
+        {
+            InGameSceneManager.Instance.OnUserLeft(response);
+            return true;
+        }
+        return false;
+    }
+
+    private bool HandleRoomUsersResponse(object payload)
+    {
+        var response = RoomUsersResponse.FromPayload(payload);
+        if (response != null && InGameSceneManager.Instance != null)
+        {
+            InGameSceneManager.Instance.OnRoomUsers(response);
+            return true;
+        }
+        return false;
+    }
+
+    private bool HandleStartGameResponse(object payload)
+    {
+        var response = StartGameResponse.FromPayload(payload);
+        if (response != null && InGameSceneManager.Instance != null)
+        {
+            InGameSceneManager.Instance.OnStartGame(response);
+            return true;
+        }
+        return false;
+    }
+
+    private bool HandleDiscardResponse(object payload)
+    {
+        var response = DiscardResponse.FromPayload(payload);
+        if (response != null && InGameSceneManager.Instance != null)
+        {
+            InGameSceneManager.Instance.OnDiscardResult(response);
+            return true;
+        }
+        return false;
+    }
+
+    private bool HandleHandPlayReadyResponse(object payload)
+    {
+        var response = HandPlayReadyResponse.FromPayload(payload);
+        if (response != null && InGameSceneManager.Instance != null)
+        {
+            InGameSceneManager.Instance.OnHandPlayReady(response);
+            return true;
+        }
+        return false;
+    }
+
+    private bool HandleHandPlayResultResponse(object payload)
+    {
+        var response = HandPlayResultResponse.FromPayload(payload);
+        if (response != null && InGameSceneManager.Instance != null)
+        {
+            InGameSceneManager.Instance.OnHandPlayResult(response);
+            return true;
+        }
+        return false;
+    }
+
+    private bool HandleNextRoundReadyResponse(object payload)
+    {
+        var response = NextRoundReadyResponse.FromPayload(payload);
+        if (response != null && InGameSceneManager.Instance != null)
+        {
+            InGameSceneManager.Instance.OnNextRoundReady(response);
+            return true;
+        }
+        return false;
+    }
+
+    private bool HandleBuyCardResponse(object payload)
+    {
+        var response = BuyCardResponse.FromPayload(payload);
+        if (response != null && InGameSceneManager.Instance != null)
+        {
+            InGameSceneManager.Instance.OnBuyCardResult(response);
+            return true;
+        }
+        return false;
+    }
+
+    private bool HandleReRollShopResponse(object payload)
+    {
+        var response = ReRollShopResponse.FromPayload(payload);
+        if (response != null && InGameSceneManager.Instance != null)
+        {
+            InGameSceneManager.Instance.OnReRollShopResult(response);
+            return true;
+        }
+        return false;
+    }
+
+    private bool HandleSellCardResponse(object payload)
+    {
+        var response = SellCardResponse.FromPayload(payload);
+        if (response != null && InGameSceneManager.Instance != null)
+        {
+            InGameSceneManager.Instance.OnSellCardResult(response);
+            return true;
+        }
+        return false;
+    }
+
+    private bool HandleCardPurchasedResponse(object payload)
+    {
+        var response = CardPurchasedResponse.FromPayload(payload);
+        if (response != null && InGameSceneManager.Instance != null)
+        {
+            InGameSceneManager.Instance.OnCardPurchased(response);
+            return true;
+        }
+        return false;
     }
 
     // 연결 시작
     public void Connect()
     {
-        if (socket == null)
+        // 기존 소켓이 있으면 완전히 정리
+        if (socket != null)
         {
-            InitializeSocket();
+            Debug.Log("[SocketManager] 기존 소켓 연결 정리");
+            socket.Close();
+            socket = null;
+            isConnected = false;
         }
 
-        if (!isConnected)
-        {
-            Debug.Log("🔌 Socket.IO 연결 시도...");
-            socket.Open();
-        }
+        // 이벤트 큐 완전 정리
+        eventQueue.Clear();
+        currentEvent = null;
+        Debug.Log("[SocketManager] 이벤트 큐 정리 완료");
+
+        // 새로 초기화
+        InitializeSocket();
+
+        Debug.Log("🔌 Socket.IO 연결 시도...");
+        socket.Open();
     }
 
     // 연결 해제
@@ -264,35 +333,23 @@ public class SocketManager : MonoBehaviour
         }
     }
 
-    // 방 입장
-    public void JoinRoom(string roomId)
+    // 강제 소켓 연결 해제 (로그인 화면 등에서 사용)
+    public void ForceDisconnect()
     {
-        if (isConnected)
+        if (socket != null && isConnected)
         {
-            var data = new Dictionary<string, object> {
-                { "roomId", roomId },
-                { "userId", SessionManager.Instance.UserId }
-            };
-            Debug.Log($"🚪 방 입장 시도: {roomId}, 데이터: {{ roomId: {roomId}, userId: {SessionManager.Instance.UserId} }}");
-            socket.Socket.Emit("joinRoom", data);
-            Debug.Log($"📤 joinRoom 이벤트 전송 완료: {roomId}");
+            Debug.Log("[SocketManager] 강제 소켓 연결 해제");
+            socket.Close();
+            isConnected = false;
         }
         else
         {
-            Debug.LogWarning("Socket.IO가 연결되지 않았습니다.");
+            Debug.Log("[SocketManager] 소켓이 이미 해제되어 있거나 초기화되지 않음");
         }
     }
 
     // 방 퇴장
-    public void LeaveRoom(string roomId)
-    {
-        if (isConnected)
-        {
-            var data = new Dictionary<string, object> { { "roomId", roomId } };
-            socket.Socket.Emit("leaveRoom", data);
-            Debug.Log($"🚪 방 퇴장: {roomId}");
-        }
-    }
+
 
     // 메시지 전송
     public void SendMessage(string roomId, string content)
@@ -313,31 +370,22 @@ public class SocketManager : MonoBehaviour
     }
 
     // 연결 상태 확인
-    public bool IsConnected()
-    {
-        return isConnected;
-    }
+    public bool IsConnected() => isConnected;
 
-    public Best.SocketIO.SocketManager GetSocket()
-    {
-        return socket;
-    }
+    public Best.SocketIO.SocketManager GetSocket() => socket;
 
     void OnDestroy()
     {
         Disconnect();
     }
 
-    public void EmitToServer(string eventName, Dictionary<string, object> data)
+    public void EmitToServer(BaseSocket dto)
     {
-        string dictLog = "";
-        if (data != null)
-        {
-            foreach (var kv in data)
-                dictLog += $"{kv.Key}: {kv.Value}, ";
-        }
-        Debug.Log($"[SocketManager] EmitToServer: {eventName}, data: {dictLog}");
-        if (socket != null && socket.Socket != null)
+        string eventName = dto.EventName;
+        var data = dto.ToDictionary();
+        Debug.Log($"[SocketManager] EmitToServer: {eventName}, data: {JsonUtility.ToJson(dto)}");
+
+        if (socket?.Socket != null)
         {
             socket.Socket.Emit(eventName, data);
             Debug.Log($"[SocketManager] Emit 호출 완료: {eventName}");
@@ -346,35 +394,5 @@ public class SocketManager : MonoBehaviour
         {
             Debug.LogWarning("[SocketManager] socket or socket.Socket is null! Emit 실패");
         }
-    }
-
-    // 이벤트 타입 정의
-    private enum SocketEventType
-    {
-        Connected,
-        UserJoined,
-        UserLeft,
-        MessageReceived,
-        HandPlayResult,
-        StartGame,
-        DiscardResult,
-        BuyCardResult,
-        RoomUsers,
-        HandPlayReady,
-        NextRoundReady
-    }
-
-    private class SocketEvent
-    {
-        public SocketEventType type;
-        public object payload;
-    }
-
-    [System.Serializable]
-    public class MessageData
-    {
-        public string userId;
-        public string content;
-        public string timestamp;
     }
 }

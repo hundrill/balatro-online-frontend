@@ -55,11 +55,11 @@ namespace BalatroOnline.Game
         }
 
         // suit/rank로부터 알맞은 sprite를 찾아 반환 (최적화)
-        private static readonly string[] suitOrder = { "Clubs", "Diamonds", "Hearts", "Spades" };
-        public Sprite FindSprite(string suit, int rank)
+        private static readonly CardType[] suitOrder = { CardType.Clubs, CardType.Diamonds, CardType.Hearts, CardType.Spades };
+        public Sprite FindSprite(CardType suit, int rank)
         {
             // 입력 방어
-            if (string.IsNullOrEmpty(suit) || rank < 1 || rank > 13 || cardSprites == null || cardSprites.Length < 52)
+            if (rank < 1 || rank > 13 || cardSprites == null || cardSprites.Length < 52)
                 return null;
             int suitIdx = System.Array.IndexOf(suitOrder, suit);
             if (suitIdx < 0) return null;
@@ -67,4 +67,4 @@ namespace BalatroOnline.Game
             return (idx >= 0 && idx < cardSprites.Length) ? cardSprites[idx] : null;
         }
     }
-} 
+}

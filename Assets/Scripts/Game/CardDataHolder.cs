@@ -6,7 +6,7 @@ namespace BalatroOnline.Game
     public class CardDataHolder : MonoBehaviour
     {
         public int rank; // 1~13 (A=1, J=11, Q=12, K=13)
-        public string suit; // "Clubs", "Diamonds", "Hearts", "Spades"
+        public CardType suit; // "Clubs", "Diamonds", "Hearts", "Spades"
 
         // CardData로부터 값 세팅
         public void SetData(CardData data)
@@ -15,4 +15,4 @@ namespace BalatroOnline.Game
             this.suit = data.suit;
         }
     }
-} 
+}

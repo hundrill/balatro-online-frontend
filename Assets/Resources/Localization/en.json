@@ -89,6 +89,10 @@
             "value": "Buy"
         },
         {
+            "key": "sell",
+            "value": "Sell"
+        },
+        {
             "key": "join",
             "value": "Join"
         },
@@ -99,6 +103,78 @@
         {
             "key": "next_round_ready_complete",
             "value": "Next Round Complete!"
+        },
+        {
+            "key": "ranking",
+            "value": "Ranking"
+        },
+        {
+            "key": "friend",
+            "value": "Friend"
+        },
+        {
+            "key": "challenge",
+            "value": "Challenge"
+        },
+        {
+            "key": "select_channel",
+            "value": "Select Channel"
+        },
+        {
+            "key": "beginner",
+            "value": "Beginner"
+        },
+        {
+            "key": "intermediate",
+            "value": "Intermediate"
+        },
+        {
+            "key": "expert",
+            "value": "Expert"
+        },
+        {
+            "key": "master",
+            "value": "Master"
+        },
+        {
+            "key": "unlimited_vip",
+            "value": "Unlimited VIP"
+        },
+        {
+            "key": "shop",
+            "value": "Shop"
+        },
+        {
+            "key": "mail_box",
+            "value": "Mail Box"
+        },
+        {
+            "key": "seed",
+            "value": "Seed"
+        },
+        {
+            "key": "betting",
+            "value": "Betting"
+        },
+        {
+            "key": "close",
+            "value": "Close"
+        },
+        {
+            "key": "create",
+            "value": "Create"
+        },
+        {
+            "key": "quick_start",
+            "value": "Quick Start"
+        },
+        {
+            "key": "no_limit",
+            "value": "No Limit"
+        },
+        {
+            "key": "win",
+            "value": "Win"
         }
     ]
 }

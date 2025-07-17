@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using System;
 
 public class SpriteManager : MonoBehaviour
 {
@@ -12,6 +13,9 @@ public class SpriteManager : MonoBehaviour
     [Header("타로 카드 스프라이트 (id: tarot_1 ~ tarot_10)")]
     public List<Sprite> tarotSprites;
 
+    [Header("백판 스프라이트")]
+    public Sprite jokerBackSprite;
+
     private void Awake()
     {
         if (Instance == null)
@@ -19,4 +23,4 @@ public class SpriteManager : MonoBehaviour
         else if (Instance != this)
             Destroy(gameObject);
     }
-} 
+}

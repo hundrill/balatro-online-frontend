@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using BalatroOnline.Common;
 using System.Collections.Generic;
 using UnityEngine.EventSystems;
+using BalatroOnline.Game;
 
 namespace BalatroOnline.InGame
 {
@@ -17,6 +18,7 @@ namespace BalatroOnline.InGame
         public Button discardButton;
         public GameObject jokerInfoPanel;
         public GameObject shopPanel;
+        public GameObject ownedJokerInfoPanel;
 
         public static InGameUIManager Instance { get; private set; }
 
@@ -41,11 +43,11 @@ namespace BalatroOnline.InGame
         // TODO: 인게임 UI 관리 (HUD, 상태창 등)
         public void OnClickBack()
         {
-            // 방 ID는 GameManager 등에서 관리한다고 가정
-            string roomId = BalatroOnline.Common.SessionManager.Instance != null ? BalatroOnline.Common.SessionManager.Instance.CurrentRoomId : null;
-            MessageDialogManager.Instance.Show("방을 나가는 중입니다...");
-            SocketManager.Instance.LeaveRoom(roomId);
-            UnityEngine.SceneManagement.SceneManager.LoadScene("LobbyScene");
+            // MessageDialogManager.Instance.Show("방을 나가는 중입니다...");
+            string roomId = SessionManager.Instance != null ? SessionManager.Instance.CurrentRoomId : null;
+            SocketManager.Instance.EmitToServer(new LeaveRoomRequest(roomId));
+
+            Debug.Log($"🚪 방 퇴장: {roomId}");
         }
 
         // 테스트용 딜 버튼 핸들러
@@ -54,12 +56,17 @@ namespace BalatroOnline.InGame
             Debug.Log("[InGameUIManager] test 버튼 클릭됨: ready 메시지 전송 시도");
             if (SocketManager.Instance != null)
             {
-                var roomId = BalatroOnline.Common.SessionManager.Instance.CurrentRoomId;
+                var roomId = SessionManager.Instance.CurrentRoomId;
                 Debug.Log($"[InGameUIManager] roomId: {roomId}");
-                Debug.Log($"[InGameUIManager] SocketManager 연결됨? {SocketManager.Instance.IsConnected()}");
                 var data = new Dictionary<string, object> { { "roomId", roomId } };
-                SocketManager.Instance.EmitToServer("ready", data);
+                SocketManager.Instance.EmitToServer(new ReadyRequest(roomId));
             }
+        }
+
+        public void OnClickTest2()
+        {
+
+
         }
 
         // 서비스 준비 중 메시지창
@@ -75,7 +82,7 @@ namespace BalatroOnline.InGame
         // Rank 정렬 버튼 클릭 핸들러
         public void OnClickSortRank()
         {
-            var myPlayer = BalatroOnline.Common.GameManager.Instance.myPlayer;
+            var myPlayer = GameManager.Instance.myPlayer;
             if (myPlayer != null)
             {
                 myPlayer.userSortType = BalatroOnline.Game.MySlot.SortType.Rank;
@@ -88,7 +95,7 @@ namespace BalatroOnline.InGame
         // Suit 정렬 버튼 클릭 핸들러
         public void OnClickSortSuit()
         {
-            var myPlayer = BalatroOnline.Common.GameManager.Instance.myPlayer;
+            var myPlayer = GameManager.Instance.myPlayer;
             if (myPlayer != null)
             {
                 myPlayer.userSortType = BalatroOnline.Game.MySlot.SortType.Suit;
@@ -100,8 +107,8 @@ namespace BalatroOnline.InGame
         // 버리기 버튼 클릭 핸들러
         public void OnClickDiscard()
         {
-            var myPlayer = BalatroOnline.Common.GameManager.Instance.myPlayer;
-            var roomId = BalatroOnline.Common.SessionManager.Instance.CurrentRoomId;
+            var myPlayer = GameManager.Instance.myPlayer;
+            var roomId = SessionManager.Instance.CurrentRoomId;
             if (myPlayer != null && !string.IsNullOrEmpty(roomId))
             {
                 myPlayer.DiscardSelectedCards(roomId);
@@ -113,7 +120,7 @@ namespace BalatroOnline.InGame
         {
             Debug.Log("[InGameUIManager] HandPlayReady 버튼 클릭됨");
             DisablePlayButtons(); // 버튼 즉시 비활성화
-            var myPlayer = BalatroOnline.Common.GameManager.Instance.myPlayer;
+            var myPlayer = GameManager.Instance.myPlayer;
             if (myPlayer != null)
             {
                 var selected = myPlayer.GetSelectedCardInfos();
@@ -131,7 +138,7 @@ namespace BalatroOnline.InGame
         public void ResetForNewRound()
         {
             // 1. 기존 유저 카드 모두 파괴
-            var myPlayer = BalatroOnline.Common.GameManager.Instance.myPlayer;
+            var myPlayer = GameManager.Instance.myPlayer;
             if (myPlayer != null)
             {
                 foreach (var card in myPlayer.handCards)
@@ -155,17 +162,33 @@ namespace BalatroOnline.InGame
 
         public void OnClickNextRound()
         {
-            // 1. Shop 창 닫기
             shopPanel.SetActive(false);
-            // 2. 서버에 nextRound 메시지 전송만
-            var roomId = BalatroOnline.Common.SessionManager.Instance.CurrentRoomId;
-            SocketManager.Instance.EmitToServer("nextRound", new Dictionary<string, object> { { "roomId", roomId } });
+            var roomId = SessionManager.Instance.CurrentRoomId;
+            SocketManager.Instance.EmitToServer(new NextRoundReadyRequest(roomId));
+            // SocketManager.Instance.EmitToServer("nextRound", new Dictionary<string, object> { { "roomId", roomId } });
         }
 
         public void OnClickReRoll()
         {
             Debug.Log("[InGameUIManager] ReRoll 버튼 클릭됨");
 
+            // 서버에 다시뽑기 요청 전송
+            var roomId = SessionManager.Instance.CurrentRoomId;
+            if (!string.IsNullOrEmpty(roomId))
+            {
+                // var data = new Dictionary<string, object> { { "roomId", roomId } };
+                // SocketManager.Instance.EmitToServer("reRollShop", data);
+                SocketManager.Instance.EmitToServer(new ReRollShopRequest(roomId));
+                Debug.Log("[InGameUIManager] reRollShop 요청 전송");
+
+                // 사용자에게 처리 중 메시지 표시
+                MessageDialogManager.Instance.Show("새로운 조커 카드를 준비 중입니다...", null, 1f);
+            }
+            else
+            {
+                Debug.LogWarning("[InGameUIManager] roomId가 null입니다.");
+                MessageDialogManager.Instance.Show("방 정보를 찾을 수 없습니다.", null, 2f);
+            }
         }
 
         public void OnClickJokerCard()
@@ -179,6 +202,27 @@ namespace BalatroOnline.InGame
         {
             Debug.Log("[InGameUIManager] JokerInfoOk 버튼 클릭됨");
             jokerInfoPanel.SetActive(false);
+        }
+
+        public void OnClickOwnedJokerInfoOk()
+        {
+            Debug.Log("[InGameUIManager] OnClickOwnedJokerInfoOk 버튼 클릭됨");
+            ownedJokerInfoPanel.SetActive(false);
+        }
+
+        public void OnClickOwnedJokerInfoSell()
+        {
+            Debug.Log("[InGameUIManager] OnClickOwnedJokerInfoSell 버튼 클릭됨");
+
+            // MySlot의 SellJoker 메서드 호출
+            if (InGameSceneManager.Instance != null && InGameSceneManager.Instance.mySlot != null)
+            {
+                InGameSceneManager.Instance.mySlot.SellJoker();
+            }
+            else
+            {
+                Debug.LogError("[InGameUIManager] MySlot을 찾을 수 없어서 판매를 진행할 수 없습니다.");
+            }
         }
 
         // handPlayResult 등에서 버튼 비활성화

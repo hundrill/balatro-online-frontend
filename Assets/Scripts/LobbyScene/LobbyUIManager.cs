@@ -6,6 +6,7 @@ using BalatroOnline.Network.Protocol;
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
+using BalatroOnline.Localization;
 
 namespace BalatroOnline.Lobby
 {
@@ -16,6 +17,19 @@ namespace BalatroOnline.Lobby
     {
         public static LobbyUIManager Instance { get; private set; }
 
+        [Header("Panel UI")]
+        public GameObject channelPanel;
+        public GameObject roomListPanel;
+
+        [Header("Dialog UI")]
+        public GameObject createRoomDialog;
+        public GameObject quickStartDialog;
+
+        [Header("User Info UI")]
+        public TMP_Text nicknameText;
+        public TMP_Text silverChipText;
+        public TMP_Text goldChipText;
+
         [Header("Room List UI")]
         public ScrollRect roomListScrollRect;
         public Transform roomListContent;
@@ -23,9 +37,12 @@ namespace BalatroOnline.Lobby
         public Button refreshButton;
         public Button createRoomButton;
         public Button backButton;
-        public TextMeshProUGUI roomCountText;
+
+        [Header("UI")]
+        public TMP_Text selectedChannelText; // 인스펙터에서 연결
 
         private List<GameObject> roomItems = new List<GameObject>();
+        private string currentSelectedChannel = string.Empty;
 
         private void Awake()
         {
@@ -39,8 +56,31 @@ namespace BalatroOnline.Lobby
 
         private void Start()
         {
-            // 초기 방 목록 로드
-            LoadRoomList();
+            // 사용자 정보 표시 업데이트
+            UpdateUserInfoDisplay();
+
+            ChannelSelected(SessionManager.Instance.CurrentChannel);
+        }
+
+        /// <summary>
+        /// 사용자 정보 표시를 업데이트합니다.
+        /// </summary>
+        public void UpdateUserInfoDisplay()
+        {
+            if (nicknameText != null)
+            {
+                nicknameText.text = SessionManager.Instance.UserNickname;
+            }
+
+            if (silverChipText != null)
+            {
+                silverChipText.text = SessionManager.Instance.SilverChip.ToString("N0");
+            }
+
+            if (goldChipText != null)
+            {
+                goldChipText.text = SessionManager.Instance.GoldChip.ToString("N0");
+            }
         }
 
         public void LoadRoomList()
@@ -51,22 +91,123 @@ namespace BalatroOnline.Lobby
 
         public void OnClickBack()
         {
-            UnityEngine.SceneManagement.SceneManager.LoadScene("ChannelScene");
+            SocketManager.Instance.Disconnect();
+            UnityEngine.SceneManagement.SceneManager.LoadScene("LoginScene");
         }
 
         public void OnClickCreateRoom()
         {
             Debug.Log("[LobbyUIManager] 방 만들기 버튼 클릭됨");
 
+            createRoomDialog.SetActive(true);
+        }
+
+        public void OnClickCreateRoomDialogCreate()
+        {
+            createRoomDialog.SetActive(false);
+
             // 테스트용 기본값으로 방 생성 (특수문자 제거)
             string roomName = "테스트 방 " + System.DateTime.Now.ToString("HHmmss");
             int maxPlayers = 4;
+            int silverSeedChip = 1; // 실버 시드 칩
+            int goldSeedChip = 0; // 골드 시드 칩
+            int silverBettingChip = 1; // 실버 베팅 칩
+            int goldBettingChip = 0; // 골드 베팅 칩
 
             // 로딩 메시지 표시
             MessageDialogManager.Instance.Show("방을 생성하고 있습니다...");
 
             // API 호출
-            ApiManager.Instance.CreateRoom(roomName, maxPlayers, OnCreateRoomResult);
+            ApiManager.Instance.CreateRoom(roomName, maxPlayers, silverSeedChip, goldSeedChip, silverBettingChip, goldBettingChip, OnCreateRoomResult);
+        }
+
+        public void OnClickQuickStart()
+        {
+            quickStartDialog.SetActive(true);
+        }
+
+        public void OnClickQuickStartDialogClose()
+        {
+            quickStartDialog.SetActive(false);
+        }
+
+        public void OnClickQuickStartDialogQuickStart()
+        {
+            quickStartDialog.SetActive(false);
+        }
+
+        public void OnClickCreateRoomDialogClose()
+        {
+            createRoomDialog.SetActive(false);
+        }
+
+        public void OnClickQuickBackToChannel()
+        {
+            channelPanel.SetActive(true);
+            roomListPanel.SetActive(false);
+        }
+
+        public void ChannelSelected(string channelName)
+        {
+            currentSelectedChannel = channelName;
+            if (selectedChannelText != null)
+            {
+                selectedChannelText.text = GetChannelDisplayName(channelName);
+            }
+            // 선택한 채널을 세션에 저장
+            BalatroOnline.Common.SessionManager.Instance.CurrentChannel = channelName;
+            channelPanel.SetActive(false);
+            roomListPanel.SetActive(true);
+
+            // 초기 방 목록 로드
+            LoadRoomList();
+        }
+
+        // 채널별 입장 제한 로직
+        public void OnClickChannelBeginner()
+        {
+            // 제한 없음
+            ChannelSelected("beginner");
+        }
+
+        public void OnClickChannelIntermediate()
+        {
+            if (SessionManager.Instance.SilverChip < 100)
+            {
+                MessageDialogManager.Instance.Show("실버 칩이 100 이상이어야 입장할 수 있습니다.");
+                return;
+            }
+            ChannelSelected("intermediate");
+        }
+
+        public void OnClickChannelExpert()
+        {
+            if (SessionManager.Instance.GoldChip < 1)
+            {
+                MessageDialogManager.Instance.Show("골드 칩이 1 이상이어야 입장할 수 있습니다.");
+                return;
+            }
+            ChannelSelected("expert");
+        }
+
+        public void OnClickChannelMaster()
+        {
+            if (SessionManager.Instance.GoldChip < 100)
+            {
+                MessageDialogManager.Instance.Show("골드 칩이 100 이상이어야 입장할 수 있습니다.");
+                return;
+            }
+            ChannelSelected("master");
+        }
+
+        public void OnClickChannelVIP()
+        {
+            if (SessionManager.Instance.GoldChip < 1000)
+            {
+                MessageDialogManager.Instance.Show("골드 칩이 1000 이상이어야 입장할 수 있습니다.");
+                return;
+            }
+            ChannelSelected("unlimited_vip");
         }
 
         private void OnCreateRoomResult(CreateRoomResponse res)
@@ -97,7 +238,9 @@ namespace BalatroOnline.Lobby
             Debug.Log($"[LobbyUIManager] Socket.IO를 통해 방 입장 시도: {roomId}");
             MessageDialogManager.Instance.Show("방에 입장하고 있습니다...");
 
-            SocketManager.Instance.JoinRoom(roomId);
+            // SocketManager.Instance.JoinRoom(roomId);
+
+            SocketManager.Instance.EmitToServer(new JoinRoomRequest(roomId, SessionManager.Instance.UserId));
 
             // // SocketManager에서 직접 핸들러를 호출하므로 이벤트 구독 불필요
 
@@ -120,33 +263,6 @@ namespace BalatroOnline.Lobby
             // }
         }
 
-        /*
-                private System.Collections.IEnumerator CheckConnectionTimeout()
-                {
-                    float timeout = 10f; // 10초 타임아웃
-                    float elapsed = 0f;
-
-                    while (elapsed < timeout)
-                    {
-                        if (SocketManager.Instance.IsConnected())
-                        {
-                            yield break; // 연결 성공
-                        }
-
-                        elapsed += Time.deltaTime;
-                        yield return null;
-                    }
-
-                    // 타임아웃 발생
-                    Debug.LogError("[LobbyUIManager] Socket.IO 연결 타임아웃");
-                    // SocketManager에서 직접 핸들러를 호출하므로 이벤트 구독 해제 불필요
-                    MessageDialogManager.Instance.Show("Socket.IO 연결 시간 초과\n방은 생성되었지만 실시간 통신이 불가능합니다.", () =>
-                    {
-                        // 연결 실패해도 InGameScene으로 이동 (REST API만 사용)
-                        UnityEngine.SceneManagement.SceneManager.LoadScene("InGameScene");
-                    });
-                }
-        */
         public void OnClickRefreshRoomList()
         {
             Debug.Log("[LobbyUIManager] 방 목록 새로고침 버튼 클릭됨");
@@ -171,21 +287,6 @@ namespace BalatroOnline.Lobby
         {
             // 기존 방 아이템들 제거
             ClearRoomList();
-
-            if (rooms == null || rooms.Length == 0)
-            {
-                if (roomCountText != null)
-                {
-                    roomCountText.text = "방이 없습니다.";
-                }
-                return;
-            }
-
-            // 방 개수 표시
-            if (roomCountText != null)
-            {
-                roomCountText.text = $"방 개수: {rooms.Length}";
-            }
 
             // 방 아이템들 생성
             foreach (var room in rooms)
@@ -234,13 +335,18 @@ namespace BalatroOnline.Lobby
             JoinRoomViaSocket(roomId);
         }
 
-        public void OnRoomJoinSuccess(string userId)
+        public void OnRoomJoinSuccess(UserJoinedResponse response)
         {
-            Debug.Log($"[LobbyUIManager] 방 입장 성공! 사용자: {userId}");
+            Debug.Log($"[LobbyUIManager] 방 입장 성공! 사용자: {response.userId}");
 
             // SocketManager에서 직접 핸들러를 호출하므로 이벤트 구독 해제 불필요
 
             UnityEngine.SceneManagement.SceneManager.LoadScene("InGameScene");
+        }
+
+        private string GetChannelDisplayName(string channelName)
+        {
+            return LocalizationManager.GetText(channelName);
         }
     }
 }

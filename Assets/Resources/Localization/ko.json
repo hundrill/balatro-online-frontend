@@ -89,6 +89,10 @@
             "value": "구매"
         },
         {
+            "key": "sell",
+            "value": "판매"
+        },
+        {
             "key": "join",
             "value": "참가"
         },
@@ -99,6 +103,78 @@
         {
             "key": "next_round_ready_complete",
             "value": "다음 라운드 준비 완료!"
+        },
+        {
+            "key": "ranking",
+            "value": "랭킹"
+        },
+        {
+            "key": "friend",
+            "value": "친구"
+        },
+        {
+            "key": "challenge",
+            "value": "도전"
+        },
+        {
+            "key": "select_channel",
+            "value": "채널 선택"
+        },
+        {
+            "key": "beginner",
+            "value": "초급"
+        },
+        {
+            "key": "intermediate",
+            "value": "중급"
+        },
+        {
+            "key": "expert",
+            "value": "고급"
+        },
+        {
+            "key": "master",
+            "value": "마스터"
+        },
+        {
+            "key": "unlimited_vip",
+            "value": "무제한 VIP"
+        },
+        {
+            "key": "shop",
+            "value": "상점"
+        },
+        {
+            "key": "mail_box",
+            "value": "우편함"
+        },
+        {
+            "key": "seed",
+            "value": "시드"
+        },
+        {
+            "key": "betting",
+            "value": "베팅"
+        },
+        {
+            "key": "close",
+            "value": "닫기"
+        },
+        {
+            "key": "create",
+            "value": "생성"
+        },
+        {
+            "key": "quick_start",
+            "value": "빠른 시작"
+        },
+        {
+            "key": "no_limit",
+            "value": "무제한"
+        },
+        {
+            "key": "win",
+            "value": "승리"
         }
     ]
 }
